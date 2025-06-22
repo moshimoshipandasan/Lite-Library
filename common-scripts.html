@@ -2,12 +2,14 @@
   function showMessage(text, type) {
     const messageDiv = document.getElementById('message');
     if (messageDiv) {
-      messageDiv.className = 'message message-' + type;
+      messageDiv.className = 'toast ' + type;
       messageDiv.textContent = text;
+      messageDiv.style.display = 'block';
       setTimeout(() => {
+        messageDiv.style.display = 'none';
         messageDiv.textContent = '';
-        messageDiv.className = '';
-      }, 5000);
+        messageDiv.className = 'toast';
+      }, 3000);
     }
   }
   

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>バーコードスキャナー</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Sans JP', sans-serif;
+      background-color: #f5f5f5;
+    }
+    
+    .scanner-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .scanner-header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .scanner-header h2 {
+      margin: 0 0 10px 0;
+      color: #333;
+    }
+    
+    .scanner-viewport {
+      position: relative;
+      width: 100%;
+      max-width: 640px;
+      height: 480px;
+      background-color: #000;
+      border: 2px solid #1976d2;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .scanner-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80%;
+      height: 40%;
+      border: 2px solid #00ff00;
+      box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+      z-index: 10;
+    }
+    
+    .scanner-instructions {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 10px 20px;
+      border-radius: 4px;
+      text-align: center;
+      font-size: 14px;
+      z-index: 10;
+    }
+    
+    .scanner-controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    
+    .btn-primary {
+      background-color: #1976d2;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background-color: #1565c0;
+    }
+    
+    .btn-secondary {
+      background-color: #757575;
+      color: white;
+    }
+    
+    .btn-secondary:hover {
+      background-color: #616161;
+    }
+    
+    .message {
+      margin-top: 20px;
+      padding: 10px 20px;
+      border-radius: 4px;
+      text-align: center;
+      display: none;
+    }
+    
+    .message-success {
+      background-color: #4caf50;
+      color: white;
+    }
+    
+    .message-error {
+      background-color: #f44336;
+      color: white;
+    }
+    
+    .message-info {
+      background-color: #2196f3;
+      color: white;
+    }
+    
+    #manual-input-section {
+      margin-top: 30px;
+      padding: 20px;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      max-width: 640px;
+      width: 100%;
+    }
+    
+    #manual-input-section h3 {
+      margin-top: 0;
+      color: #1976d2;
+    }
+    
+    #manual-input-section input {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin: 10px 0;
+      box-sizing: border-box;
+    }
+    
+    .drawingBuffer {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="scanner-container">
+    <div class="scanner-header">
+      <h2>バーコードスキャナー</h2>
+      <p>バーコードを枠内に合わせてください</p>
+    </div>
+    
+    <div class="scanner-viewport" id="interactive">
+      <div class="scanner-overlay"></div>
+      <div class="scanner-instructions">
+        バーコードを緑の枠内に収めてください
+      </div>
+    </div>
+    
+    <div class="scanner-controls">
+      <button class="btn btn-primary" onclick="toggleScanner()">スキャン開始</button>
+      <button class="btn btn-secondary" onclick="switchCamera()">カメラ切替</button>
+      <button class="btn btn-secondary" onclick="closeWindow()">閉じる</button>
+    </div>
+    
+    <div id="message" class="message"></div>
+    
+    <div id="manual-input-section">
+      <h3>手動入力</h3>
+      <p>バーコードが読み取れない場合は、直接入力してください：</p>
+      <input type="text" id="manual-isbn" placeholder="例: 9784123456789">
+      <button class="btn btn-primary" onclick="submitManualInput()">確定</button>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+  <script>
+    // グローバル変数
+    let isScanning = false;
+    let currentFacingMode = "environment";
+    let lastDetectedTime = 0;
+    let lastDetectedCode = null;
+    const COOLDOWN_PERIOD = 3000;
+    
+    // URLパラメータからタイプを取得
+    const urlParams = new URLSearchParams(window.location.search);
+    const scanType = urlParams.get('type') || 'isbn';
+    
+    function setMessage(text, type = 'info') {
+      const messageEl = document.getElementById('message');
+      messageEl.textContent = text;
+      messageEl.className = 'message message-' + type;
+      messageEl.style.display = 'block';
+      
+      setTimeout(() => {
+        messageEl.style.display = 'none';
+      }, 5000);
+    }
+    
+    function toggleScanner() {
+      if (isScanning) {
+        stopScanner();
+      } else {
+        startScanner();
+      }
+    }
+    
+    function startScanner() {
+      const config = {
+        inputStream: {
+          name: "Live",
+          type: "LiveStream",
+          target: document.querySelector('#interactive'),
+          constraints: {
+            facingMode: currentFacingMode,
+            width: { min: 640 },
+            height: { min: 480 }
+          }
+        },
+        locator: {
+          patchSize: "medium",
+          halfSample: true
+        },
+        numOfWorkers: 0, // Workerエラーを回避
+        frequency: 10,
+        decoder: {
+          readers: scanType === 'isbn' ? 
+            ["ean_reader", "ean_13_reader", "ean_8_reader"] : 
+            ["code_128_reader", "code_39_reader"]
+        },
+        locate: true
+      };
+      
+      Quagga.init(config, function(err) {
+        if (err) {
+          console.error("Quagga init error:", err);
+          setMessage("カメラの初期化に失敗しました。手動入力をご利用ください。", "error");
+          return;
+        }
+        
+        Quagga.start();
+        isScanning = true;
+        document.querySelector('.btn-primary').textContent = 'スキャン停止';
+        
+        Quagga.onDetected(handleBarcodeDetection);
+      });
+    }
+    
+    function stopScanner() {
+      if (typeof Quagga !== 'undefined') {
+        Quagga.offDetected();
+        Quagga.stop();
+      }
+      isScanning = false;
+      document.querySelector('.btn-primary').textContent = 'スキャン開始';
+    }
+    
+    function handleBarcodeDetection(result) {
+      const code = result.codeResult.code;
+      const currentTime = new Date().getTime();
+      const confidence = result.codeResult.confidence;
+      
+      console.log("バーコード検出:", code, "信頼度:", confidence);
+      
+      // 信頼度チェック
+      if (confidence < 0.5) {
+        return;
+      }
+      
+      // 重複検出の防止
+      if (code === lastDetectedCode && (currentTime - lastDetectedTime) < COOLDOWN_PERIOD) {
+        return;
+      }
+      
+      lastDetectedCode = code;
+      lastDetectedTime = currentTime;
+      
+      // ビープ音
+      playBeepSound();
+      
+      // 検出成功
+      stopScanner();
+      setMessage(`バーコードを読み取りました: ${code}`, 'success');
+      
+      // 親ウィンドウに結果を送信
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({
+          type: 'barcode-detected',
+          code: code,
+          scanType: scanType
+        }, '*');
+        
+        // 2秒後に自動的に閉じる
+        setTimeout(() => {
+          window.close();
+        }, 2000);
+      }
+    }
+    
+    function switchCamera() {
+      currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+      if (isScanning) {
+        stopScanner();
+        setTimeout(() => {
+          startScanner();
+        }, 300);
+      }
+    }
+    
+    function playBeepSound() {
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 1000;
+        gainNode.gain.value = 0.3;
+        
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.1);
+      } catch (e) {
+        console.error("ビープ音の再生に失敗:", e);
+      }
+    }
+    
+    function submitManualInput() {
+      const code = document.getElementById('manual-isbn').value;
+      if (!code) {
+        setMessage('コードを入力してください', 'error');
+        return;
+      }
+      
+      // 親ウィンドウに結果を送信
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({
+          type: 'barcode-detected',
+          code: code,
+          scanType: scanType
+        }, '*');
+        
+        setMessage('入力を確定しました', 'success');
+        setTimeout(() => {
+          window.close();
+        }, 1000);
+      }
+    }
+    
+    function closeWindow() {
+      window.close();
+    }
+    
+    // Enterキーで手動入力を確定
+    document.getElementById('manual-isbn').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        submitManualInput();
+      }
+    });
+  </script>
+</body>
+</html>

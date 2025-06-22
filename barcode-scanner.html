@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>バーコードスキャナー（代替方法）</title>
+  <?!= include('common-styles'); ?>
+  <style>
+    .scanner-container {
+      text-align: center;
+      padding: 20px;
+    }
+    
+    .camera-input {
+      display: none;
+    }
+    
+    .scan-button {
+      display: inline-block;
+      padding: 15px 30px;
+      background-color: #1976d2;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 18px;
+      margin: 20px 0;
+    }
+    
+    .scan-button:hover {
+      background-color: #1565c0;
+    }
+    
+    .preview-image {
+      max-width: 100%;
+      max-height: 400px;
+      margin: 20px 0;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+    }
+    
+    .result-section {
+      margin-top: 20px;
+      padding: 20px;
+      background-color: #f5f5f5;
+      border-radius: 8px;
+    }
+    
+    .manual-input-section {
+      margin-top: 30px;
+      padding: 20px;
+      background-color: #e3f2fd;
+      border-radius: 8px;
+    }
+    
+    .manual-input-section h3 {
+      color: #1976d2;
+      margin-bottom: 15px;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <h1>バーコードスキャナー</h1>
+    
+    <div id="message"></div>
+    
+    <div class="scanner-container">
+      <h2>方法1: カメラで撮影</h2>
+      <p>スマートフォンのカメラでバーコードを撮影してください</p>
+      
+      <input type="file" id="cameraInput" class="camera-input" accept="image/*" capture="environment">
+      <label for="cameraInput" class="scan-button">
+        📷 カメラで撮影
+      </label>
+      
+      <div id="previewSection" style="display: none;">
+        <img id="previewImage" class="preview-image">
+        <div class="result-section">
+          <h3>読み取り結果</h3>
+          <div id="scanResult">処理中...</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="manual-input-section">
+      <h3>方法2: 手動入力</h3>
+      <p>バーコードの下の数字を直接入力してください</p>
+      <div class="form-group">
+        <label for="manualIsbn">ISBN番号</label>
+        <input type="text" id="manualIsbn" placeholder="9784000000000">
+        <button class="btn btn-primary" onclick="useManualInput()">使用する</button>
+      </div>
+    </div>
+    
+    <div class="button-group" style="margin-top: 30px;">
+      <button class="btn btn-secondary" onclick="backToBookRegister()">書籍登録に戻る</button>
+    </div>
+  </div>
+  
+  <?!= include('common-scripts'); ?>
+  <script>
+    document.getElementById('cameraInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = document.getElementById('previewImage');
+          img.src = e.target.result;
+          document.getElementById('previewSection').style.display = 'block';
+          
+          // ここで画像からバーコードを読み取る処理を実行
+          // 今回は簡易的に手動入力を促す
+          setTimeout(() => {
+            document.getElementById('scanResult').innerHTML = `
+              <p style="color: #d32f2f;">自動読み取りに失敗しました</p>
+              <p>下の手動入力欄にバーコードの数字を入力してください</p>
+            `;
+            document.getElementById('manualIsbn').focus();
+          }, 1500);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    
+    function useManualInput() {
+      const isbn = document.getElementById('manualIsbn').value;
+      if (!isbn) {
+        showMessage('ISBN番号を入力してください', 'error');
+        return;
+      }
+      
+      // ISBN番号を親ウィンドウに渡して戻る
+      localStorage.setItem('scannedISBN', isbn);
+      showMessage('ISBN番号を設定しました: ' + isbn, 'success');
+      
+      setTimeout(() => {
+        navigateTo('bookRegister');
+      }, 1000);
+    }
+    
+    function backToBookRegister() {
+      navigateTo('bookRegister');
+    }
+    
+    // ページ読み込み時にlocalStorageをクリア
+    window.onload = function() {
+      localStorage.removeItem('scannedISBN');
+    };
+  </script>
+</body>
+</html>

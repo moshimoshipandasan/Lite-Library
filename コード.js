@@ -81,7 +81,9 @@ function doGet(e) {
     'loan': 'loan',
     'return': 'return',
     'reports': 'reports',
-    'settings': 'settings'
+    'settings': 'settings',
+    'barcodeScanner': 'barcode-scanner',
+    'barcodePopup': 'barcode-popup'
   };
   
   const fileName = pageMap[page] || 'menu';
@@ -221,6 +223,117 @@ function getSpreadsheet() {
 // ========================================
 // 書籍管理機能
 // ========================================
+
+// ISBN検索関数
+function searchBookByISBN(isbn) {
+  try {
+    // ISBNの正規化（ハイフンを除去）
+    const normalizedISBN = isbn.replace(/-/g, '');
+    
+    // 国立国会図書館APIを使用
+    const url = `https://ndlsearch.ndl.go.jp/api/sru?operation=searchRetrieve&query=isbn=${normalizedISBN}&recordPacking=xml&maximumRecords=1`;
+    
+    const response = UrlFetchApp.fetch(url);
+    const xml = response.getContentText();
+    
+    // XMLをパース
+    const document = XmlService.parse(xml);
+    const root = document.getRootElement();
+    
+    // 名前空間の定義
+    const srw = XmlService.getNamespace('http://www.loc.gov/zing/srw/');
+    const dc = XmlService.getNamespace('http://purl.org/dc/elements/1.1/');
+    
+    // レコードを取得
+    const records = root.getChild('records', srw);
+    if (!records) {
+      return { success: false, message: '書籍が見つかりませんでした' };
+    }
+    
+    const record = records.getChild('record', srw);
+    if (!record) {
+      return { success: false, message: '書籍が見つかりませんでした' };
+    }
+    
+    const recordData = record.getChild('recordData', srw);
+    const dcRecord = recordData.getChildren()[0];
+    
+    // 書籍情報を抽出
+    const bookInfo = {
+      isbn: normalizedISBN,
+      title: '',
+      author: '',
+      publisher: '',
+      publishYear: ''
+    };
+    
+    // タイトルを取得
+    const titleElements = dcRecord.getChildren('title', dc);
+    if (titleElements.length > 0) {
+      bookInfo.title = titleElements[0].getText();
+    }
+    
+    // 著者を取得
+    const creatorElements = dcRecord.getChildren('creator', dc);
+    if (creatorElements.length > 0) {
+      bookInfo.author = creatorElements.map(el => el.getText()).join(', ');
+    }
+    
+    // 出版社を取得
+    const publisherElements = dcRecord.getChildren('publisher', dc);
+    if (publisherElements.length > 0) {
+      bookInfo.publisher = publisherElements[0].getText();
+    }
+    
+    // 出版年を取得
+    const dateElements = dcRecord.getChildren('date', dc);
+    if (dateElements.length > 0) {
+      const dateText = dateElements[0].getText();
+      const yearMatch = dateText.match(/\d{4}/);
+      if (yearMatch) {
+        bookInfo.publishYear = yearMatch[0];
+      }
+    }
+    
+    return {
+      success: true,
+      bookInfo: bookInfo
+    };
+    
+  } catch (error) {
+    console.error('ISBN検索エラー:', error);
+    
+    // 代替APIとしてOpenBDを試す
+    try {
+      const normalizedISBN = isbn.replace(/-/g, '');
+      const openBdUrl = `https://api.openbd.jp/v1/get?isbn=${normalizedISBN}`;
+      const response = UrlFetchApp.fetch(openBdUrl);
+      const data = JSON.parse(response.getContentText());
+      
+      if (data && data[0] && data[0].summary) {
+        const summary = data[0].summary;
+        return {
+          success: true,
+          bookInfo: {
+            isbn: normalizedISBN,
+            title: summary.title || '',
+            author: summary.author || '',
+            publisher: summary.publisher || '',
+            publishYear: summary.pubdate ? summary.pubdate.substring(0, 4) : ''
+          }
+        };
+      }
+    } catch (openBdError) {
+      console.error('OpenBD APIエラー:', openBdError);
+    }
+    
+    return {
+      success: false,
+      message: 'ISBN検索に失敗しました'
+    };
+  }
+}
+
 function registerBook(bookData) {
   try {
     const db = new SpreadsheetDB();
@@ -1143,4 +1256,48 @@ function getDeployedUrl() {
   // 最後の手段として、現在知られているデプロイURLを返す
   // 注意: このURLは新しいデプロイごとに更新する必要があります
   return 'https://script.google.com/macros/s/AKfycbwaXDX2EHPULqIkv0J4gdcn5nnhHycoUExRdrn-THsnVOZniSD1mgRTMn3j8ZDjVsukCA/exec';
+}
+
+// バーコードスキャナーのサイドバーを表示（HTMLから呼び出される）
+function showBarcodeSidebar() {
+  try {
+    const template = HtmlService.createTemplateFromFile('barcode-sidebar');
+    const html = template.evaluate()
+        .setTitle('バーコードスキャナー')
+        .setWidth(350);
+    
+    // Web アプリケーションでは UI は使えないので、新しいウィンドウで開く
+    return html.getContent();
+  } catch (error) {
+    console.error('サイドバーの表示に失敗:', error);
+    throw error;
+  }
+}
+
+// バーコード値を一時保存（セッション内で使用）
+let tempBarcodeValue = null;
+
+function setBarcodeValue(code) {
+  tempBarcodeValue = code;
+  // スクリプトプロパティに一時保存（複数セッション対応）
+  const userProperties = PropertiesService.getUserProperties();
+  userProperties.setProperty('tempBarcode', code);
+  return true;
+}
+
+function getTempBarcodeValue() {
+  // まずメモリから取得
+  if (tempBarcodeValue) {
+    const value = tempBarcodeValue;
+    tempBarcodeValue = null;
+    return value;
+  }
+  
+  // メモリになければプロパティから取得
+  const userProperties = PropertiesService.getUserProperties();
+  const value = userProperties.getProperty('tempBarcode');
+  if (value) {
+    userProperties.deleteProperty('tempBarcode');
+  }
+  return value;
 }

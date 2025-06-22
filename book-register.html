@@ -2,134 +2,598 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>書籍登録</title>
-  <?!= include('common-styles'); ?>
+  <?!= include('mobile-common-styles'); ?>
   <style>
-    #barcodeScanner {
+    /* モバイル最適化の追加スタイル */
+    .mobile-content {
+      padding-top: 56px;
+      padding-bottom: 160px;
+    }
+    
+    /* ヘッダーのバックボタン修正 */
+    .mobile-header .back-button {
+      position: relative;
+      z-index: 10;
+      background-color: transparent;
+      border: 2px solid #1976d2;
+      color: #1976d2;
+      font-size: 24px;
+      font-weight: bold;
+      min-width: 40px;
+      height: 40px;
+    }
+    
+    .mobile-header .back-button:hover {
+      background-color: #e3f2fd;
+    }
+    
+    /* フォームセクションのモバイル最適化 */
+    .form-section {
+      background-color: #ffffff;
+      margin: 0;
+      padding: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    
+    .form-section h2 {
+      font-size: 18px;
+      font-weight: 600;
+      padding: 16px;
+      margin: 0;
+      background-color: #f8f9fa;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    
+    /* ISBN入力セクション */
+    .isbn-section {
+      padding: 16px;
+    }
+    
+    .isbn-input-wrapper {
+      position: relative;
+      margin-bottom: 12px;
+    }
+    
+    .isbn-scan-button {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background-color: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    input#isbn {
+      padding-right: 120px;
+    }
+    
+    /* ボタングループ */
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      background-color: #f8f9fa;
+      border-top: 1px solid #e0e0e0;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+    }
+    
+    /* ヒントカード */
+    .hint-card {
+      background-color: #e3f2fd;
+      border-radius: 12px;
+      padding: 12px;
+      margin: 12px 16px;
+      font-size: 13px;
+    }
+    
+    .hint-card-title {
+      font-weight: 600;
+      color: #1565c0;
+      margin-bottom: 4px;
+    }
+    
+    /* サイドバー（ドロワー）のスタイル */
+    .sidebar-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+      display: none;
+    }
+    
+    .sidebar-container {
+      position: fixed;
+      top: 0;
+      right: -100%;
       width: 100%;
-      max-width: 400px;
-      height: 300px;
-      border: 2px dashed #ddd;
-      margin: 10px 0;
+      height: 100%;
+      background-color: #ffffff;
+      z-index: 1000;
+      transition: right 0.3s ease;
+      overflow-y: auto;
+    }
+    
+    .sidebar-container.active {
+      right: 0;
+    }
+    
+    .sidebar-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background-color: #ffffff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 16px;
+      z-index: 1001;
+    }
+    
+    .sidebar-content {
+      padding-top: 72px;
+      padding-bottom: 20px;
+    }
+    
+    .scanner-viewport {
+      position: relative;
+      width: 100%;
+      height: 50vh;
+      background-color: #000;
+      overflow: hidden;
+    }
+    
+    .scanner-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80%;
+      height: 40%;
+      border: 3px solid #4caf50;
+      border-radius: 8px;
+      box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+      z-index: 10;
+    }
+    
+    .scanner-instructions {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      background-color: rgba(0, 0, 0, 0.8);
+      padding: 8px 16px;
+      border-radius: 20px;
+      text-align: center;
+      font-size: 14px;
+      z-index: 10;
+    }
+    
+    .manual-input-section {
+      background-color: #f8f9fa;
+      padding: 16px;
+      margin: 16px;
+      border-radius: 12px;
+    }
+    
+    .manual-input-section h4 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    
+    .scanner-controls {
+      display: flex;
+      gap: 12px;
+      padding: 16px;
+    }
+    
+    /* カメラ権限リクエスト画面 */
+    .camera-permission {
+      text-align: center;
+      padding: 40px 20px;
+    }
+    
+    .camera-permission-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+    
+    .camera-permission-text {
+      font-size: 16px;
+      color: #666;
+      margin-bottom: 24px;
+    }
+    
+    /* スキャン結果表示 */
+    .scan-result {
+      background-color: #4caf50;
+      color: white;
+      padding: 12px;
+      margin: 16px;
+      border-radius: 8px;
+      text-align: center;
       display: none;
     }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="container">
-    <h1>書籍登録</h1>
+  <!-- モバイルヘッダー -->
+  <div class="mobile-header" style="display: flex; align-items: center; justify-content: flex-start;">
+    <button class="back-button" onclick="navigateTo('menu')" style="display: block; visibility: visible;">
+      ←
+    </button>
+    <h1 style="flex: 1; text-align: center; margin-right: 48px;">書籍登録</h1>
+  </div>
+  
+  <div class="mobile-content">
+    <div id="message" class="toast" style="display: none;"></div>
     
-    <div id="message"></div>
-    
-    <div class="form-section">
-      <h2>ISBN検索</h2>
+    <!-- ISBN検索セクション -->
+    <div class="card">
       <div class="form-group">
         <label for="isbn">ISBNコード</label>
-        <input type="text" id="isbn" placeholder="978-4-XXXX-XXXX-X">
-        <button class="btn btn-secondary" onclick="toggleScanner()" style="margin-top: 10px;">バーコードスキャン</button>
-        <div id="barcodeScanner"></div>
-        <button class="btn btn-primary" onclick="searchByISBN()" style="margin-top: 10px;">ISBN検索</button>
+        <div class="isbn-input-wrapper">
+          <input type="text" id="isbn" placeholder="例: 9784123456789">
+          <button type="button" class="isbn-scan-button" onclick="openBarcodeScanner()">
+            📷 スキャン
+          </button>
+        </div>
+        <button class="btn btn-primary" onclick="searchByISBN()">ISBN検索</button>
       </div>
     </div>
     
-    <form id="bookForm" class="form-section">
-      <h2>書籍情報</h2>
-      <div class="form-group">
-        <label for="title" class="required">書籍名</label>
-        <input type="text" id="title" required>
+    <!-- ヒントカード -->
+    <div class="hint-card">
+      <div class="hint-card-title">💡 ISBN入力のヒント</div>
+      <div>バーコードの下の数字をハイフンなしで入力してください</div>
+    </div>
+    
+    <!-- 書籍情報フォーム -->
+    <form id="bookForm">
+      <div class="form-section">
+        <h2>書籍情報</h2>
+        <div style="padding: 16px;">
+          <div class="form-group">
+            <label for="title">書籍名 *</label>
+            <input type="text" id="title" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="titleKana">書籍名ヨミ</label>
+            <input type="text" id="titleKana" placeholder="ひらがな または カタカナ">
+          </div>
+          
+          <div class="form-group">
+            <label for="author">著者 *</label>
+            <input type="text" id="author" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="authorKana">著者ヨミ</label>
+            <input type="text" id="authorKana" placeholder="ひらがな または カタカナ">
+          </div>
+          
+          <div class="form-group">
+            <label for="publisher">出版社 *</label>
+            <input type="text" id="publisher" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="publishYear">発行年</label>
+            <input type="number" id="publishYear" min="1900" max="2100" placeholder="例: 2024">
+          </div>
+          
+          <div class="form-group">
+            <label for="price">価格</label>
+            <input type="number" id="price" min="0" placeholder="例: 1500">
+          </div>
+          
+          <div class="form-group">
+            <label for="category">カテゴリ</label>
+            <input type="text" id="category" placeholder="例: 小説、ビジネス書">
+          </div>
+          
+          <div class="form-group">
+            <label for="location">所在場所</label>
+            <input type="text" id="location" placeholder="例: A-1-1">
+          </div>
+        </div>
       </div>
       
-      <div class="form-group">
-        <label for="titleKana">書籍名ヨミ</label>
-        <input type="text" id="titleKana" placeholder="ひらがなまたはカタカナ">
-      </div>
-      
-      <div class="form-group">
-        <label for="author" class="required">著者</label>
-        <input type="text" id="author" required>
-      </div>
-      
-      <div class="form-group">
-        <label for="authorKana">著者ヨミ</label>
-        <input type="text" id="authorKana" placeholder="ひらがなまたはカタカナ">
-      </div>
-      
-      <div class="form-group">
-        <label for="publisher" class="required">出版社</label>
-        <input type="text" id="publisher" required>
-      </div>
-      
-      <div class="form-group">
-        <label for="publishYear">発行年</label>
-        <input type="number" id="publishYear" min="1900" max="2100">
-      </div>
-      
-      <div class="form-group">
-        <label for="price">価格</label>
-        <input type="number" id="price" min="0">
-      </div>
-      
-      <div class="form-group">
-        <label for="category">カテゴリ</label>
-        <input type="text" id="category" placeholder="例: 小説、ビジネス書">
-      </div>
-      
-      <div class="form-group">
-        <label for="location">所在場所</label>
-        <input type="text" id="location" placeholder="例: A-1-1">
-      </div>
-      
+      <!-- 固定ボタングループ -->
       <div class="button-group">
-        <button type="submit" class="btn btn-primary">登録</button>
-        <button type="button" class="btn btn-secondary" onclick="clearForm()">クリア</button>
-        <button type="button" class="btn btn-secondary" onclick="navigateTo('menu')">戻る</button>
+        <button type="submit" class="btn btn-primary">書籍を登録する</button>
+        <button type="button" class="btn btn-secondary" onclick="clearForm()">入力内容をクリア</button>
+        <button type="button" class="btn btn-secondary" onclick="navigateTo('menu')">トップへ戻る</button>
       </div>
     </form>
   </div>
   
+  <!-- サイドバー（ドロワー） -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="sidebar-container" id="sidebarContainer">
+    <div class="sidebar-header">
+      <h3>バーコードスキャン</h3>
+      <button class="back-button" onclick="closeSidebar()">×</button>
+    </div>
+    <div class="sidebar-content">
+      <div class="scanner-viewport" id="interactive">
+        <div class="scanner-overlay"></div>
+        <div class="scanner-instructions">
+          バーコードを緑の枠内に収めてください
+        </div>
+      </div>
+      
+      <div id="sidebar-message" class="toast" style="display: none;"></div>
+      
+      <div id="scan-result" class="scan-result"></div>
+      
+      <div class="scanner-controls">
+        <button class="btn btn-primary" id="scanButton" onclick="toggleScanner()" style="flex: 1;">カメラを開始</button>
+      </div>
+      
+      <div class="manual-input-section">
+        <h4>バーコード番号を手動入力</h4>
+        <input type="text" id="manual-isbn-sidebar" placeholder="例: 9784123456789">
+        <button class="btn btn-success" onclick="submitManualInputFromSidebar()" style="width: 100%; margin-top: 12px;">確定</button>
+      </div>
+    </div>
+  </div>
+  
   <?!= include('common-scripts'); ?>
-  <script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+  <!-- ZXing ライブラリ（バーコードスキャン用） -->
+  <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
   <script>
-    let scannerActive = false;
+    // グローバル変数
+    let codeReader = null;
+    let isShowingCamera = false;
+    let selectedDeviceId = null;
+    let scanInterval = null;
     
+    // サイドバーを開く
+    function openBarcodeScanner() {
+      document.getElementById('sidebarOverlay').style.display = 'block';
+      document.getElementById('sidebarContainer').classList.add('active');
+      
+      // 少し遅延してからカメラを起動
+      setTimeout(() => {
+        startCameraPreview();
+      }, 300);
+    }
+    
+    // サイドバーを閉じる
+    function closeSidebar() {
+      document.getElementById('sidebarOverlay').style.display = 'none';
+      document.getElementById('sidebarContainer').classList.remove('active');
+      
+      // カメラを停止
+      stopCameraPreview();
+    }
+    
+    // サイドバー内のメッセージ表示
+    function setSidebarMessage(text, type = 'info') {
+      const messageEl = document.getElementById('sidebar-message');
+      messageEl.textContent = text;
+      messageEl.className = 'toast ' + type;
+      messageEl.style.display = 'block';
+      messageEl.style.position = 'fixed';
+      messageEl.style.bottom = '80px';
+      messageEl.style.left = '50%';
+      messageEl.style.transform = 'translateX(-50%)';
+      messageEl.style.zIndex = '200';
+      
+      setTimeout(() => {
+        messageEl.style.display = 'none';
+      }, 3000);
+    }
+    
+    // カメラプレビューの開始/停止切り替え
     function toggleScanner() {
-      const scanner = document.getElementById('barcodeScanner');
-      if (scannerActive) {
-        Quagga.stop();
-        scanner.style.display = 'none';
-        scannerActive = false;
+      if (isShowingCamera) {
+        stopCameraPreview();
       } else {
-        scanner.style.display = 'block';
-        initScanner();
-        scannerActive = true;
+        startCameraPreview();
       }
     }
     
-    function initScanner() {
-      Quagga.init({
-        inputStream: {
-          name: "Live",
-          type: "LiveStream",
-          target: document.querySelector('#barcodeScanner')
-        },
-        decoder: {
-          readers: ["ean_reader", "ean_13_reader"]
+    // カメラプレビューを開始
+    async function startCameraPreview() {
+      try {
+        // ビデオ要素を作成
+        let videoElement = document.querySelector('#interactive video');
+        if (!videoElement) {
+          videoElement = document.createElement('video');
+          videoElement.id = 'barcode-video';
+          videoElement.style.width = '100%';
+          videoElement.style.height = '100%';
+          videoElement.style.objectFit = 'cover';
+          document.getElementById('interactive').appendChild(videoElement);
         }
-      }, function(err) {
-        if (err) {
-          console.error(err);
-          return;
+        
+        // ZXingライブラリを初期化
+        const { BrowserMultiFormatReader } = window.ZXing;
+        codeReader = new BrowserMultiFormatReader();
+        
+        // 利用可能なカメラデバイスを取得
+        const videoInputDevices = await codeReader.listVideoInputDevices();
+        
+        // 背面カメラを優先
+        selectedDeviceId = videoInputDevices.find(device => 
+          device.label.toLowerCase().includes('back') || 
+          device.label.toLowerCase().includes('rear')
+        )?.deviceId || videoInputDevices[0]?.deviceId;
+        
+        if (!selectedDeviceId) {
+          throw new Error('カメラが見つかりません');
         }
-        Quagga.start();
-      });
-      
-      Quagga.onDetected(function(result) {
-        document.getElementById('isbn').value = result.codeResult.code;
-        toggleScanner();
-      });
+        
+        // 継続的スキャンを開始
+        await codeReader.decodeFromVideoDevice(selectedDeviceId, videoElement, (result, err) => {
+          if (result) {
+            // バーコード検出成功
+            handleBarcodeDetected(result.text);
+          }
+          if (err && !(err.name === 'NotFoundException')) {
+            console.error('スキャンエラー:', err);
+          }
+        });
+        
+        isShowingCamera = true;
+        
+        // ボタンを更新
+        const scanButton = document.getElementById('scanButton');
+        scanButton.textContent = 'スキャンを停止';
+        scanButton.classList.remove('btn-primary');
+        scanButton.classList.add('btn-warning');
+        
+        setSidebarMessage('バーコードを枠内に合わせてください', 'info');
+        
+      } catch (err) {
+        console.error('カメラエラー:', err);
+        setSidebarMessage('カメラへのアクセスが拒否されました', 'error');
+      }
     }
+    
+    // カメラプレビューを停止
+    function stopCameraPreview() {
+      if (codeReader) {
+        codeReader.reset();
+        codeReader = null;
+      }
+      
+      const videoElement = document.querySelector('#interactive video');
+      if (videoElement) {
+        videoElement.remove();
+      }
+      
+      isShowingCamera = false;
+      
+      // ボタンを元に戻す
+      const scanButton = document.getElementById('scanButton');
+      scanButton.textContent = 'カメラを開始';
+      scanButton.classList.remove('btn-warning');
+      scanButton.classList.add('btn-primary');
+      
+      // スキャン結果をクリア
+      const scanResult = document.getElementById('scan-result');
+      scanResult.style.display = 'none';
+      scanResult.textContent = '';
+    }
+    
+    // バーコード検出時の処理
+    function handleBarcodeDetected(code) {
+      // ビープ音を再生
+      playBeepSound();
+      
+      // スキャン結果を表示
+      const scanResult = document.getElementById('scan-result');
+      scanResult.textContent = '✓ バーコードを検出: ' + code;
+      scanResult.style.display = 'block';
+      
+      // ISBN入力欄に値を設定
+      document.getElementById('isbn').value = code;
+      
+      // 1秒後にサイドバーを閉じる
+      setTimeout(() => {
+        closeSidebar();
+        showMessage('ISBNを読み取りました', 'success');
+      }, 1000);
+    }
+    
+    // ビープ音再生
+    function playBeepSound() {
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 1000;
+        gainNode.gain.value = 0.3;
+        
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.1);
+      } catch (e) {
+        console.error("ビープ音の再生に失敗:", e);
+      }
+    }
+    
+    // 手動入力の確定
+    function submitManualInputFromSidebar() {
+      const code = document.getElementById('manual-isbn-sidebar').value;
+      if (!code) {
+        setSidebarMessage('コードを入力してください', 'error');
+        return;
+      }
+      
+      // ISBN入力欄に値を設定
+      document.getElementById('isbn').value = code;
+      
+      // サイドバーを閉じる
+      closeSidebar();
+      
+      // メッセージ表示
+      showMessage('ISBNを設定しました', 'success');
+    }
+    
+    // Enterキーで手動入力を確定
+    document.addEventListener('DOMContentLoaded', function() {
+      const manualInput = document.getElementById('manual-isbn-sidebar');
+      if (manualInput) {
+        manualInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            submitManualInputFromSidebar();
+          }
+        });
+      }
+      
+      // モバイル最適化の調整
+      const inputs = document.querySelectorAll('input, textarea');
+      inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+          // フォーカス時にボタングループを上に移動
+          const buttonGroup = document.querySelector('.button-group');
+          if (buttonGroup) {
+            setTimeout(() => {
+              const windowHeight = window.innerHeight;
+              const inputRect = this.getBoundingClientRect();
+              if (inputRect.bottom > windowHeight - 200) {
+                window.scrollTo({
+                  top: inputRect.top - 100,
+                  behavior: 'smooth'
+                });
+              }
+            }, 300);
+          }
+        });
+      });
+    });
     
     function searchByISBN() {
       const isbn = document.getElementById('isbn').value;
@@ -138,8 +602,33 @@
         return;
       }
       
-      // 実際のISBN検索実装は省略
-      showMessage('ISBN検索機能は実装予定です', 'info');
+      showMessage('ISBN検索を実行中...', 'info');
+      
+      // Google Apps ScriptのISBN検索を呼び出す
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success && result.bookInfo) {
+            // 検索結果を入力欄に反映
+            const bookInfo = result.bookInfo;
+            if (bookInfo.title) document.getElementById('title').value = bookInfo.title;
+            if (bookInfo.author) document.getElementById('author').value = bookInfo.author;
+            if (bookInfo.publisher) document.getElementById('publisher').value = bookInfo.publisher;
+            if (bookInfo.publishYear) document.getElementById('publishYear').value = bookInfo.publishYear;
+            
+            showMessage('書籍情報を取得しました', 'success');
+            
+            // フォーカスを次の入力欄に移動
+            const titleKanaInput = document.getElementById('titleKana');
+            if (titleKanaInput) titleKanaInput.focus();
+          } else {
+            showMessage(result.message || '書籍が見つかりませんでした', 'warning');
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('ISBN検索エラー:', error);
+          showMessage('検索に失敗しました', 'error');
+        })
+        .searchBookByISBN(isbn);
     }
     
     document.getElementById('bookForm').addEventListener('submit', function(e) {
@@ -178,6 +667,15 @@
     function clearForm() {
       document.getElementById('bookForm').reset();
       document.getElementById('isbn').value = '';
+    }
+    
+    // navigateTo関数を追加
+    function navigateTo(page) {
+      google.script.run
+        .withSuccessHandler(function(url) {
+          window.top.location.href = url + '?page=' + page;
+        })
+        .getDeployedUrl();
     }
   </script>
 </body>
