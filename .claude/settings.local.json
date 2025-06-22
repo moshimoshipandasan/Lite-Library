@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:zenn.dev)"
+      "WebFetch(domain:zenn.dev)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
