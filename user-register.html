@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>利用者登録</title>
+  <?!= include('common-styles'); ?>
+  <style>
+    .card-info {
+      background-color: #e3f2fd;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+      display: none;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <h1>利用者登録</h1>
+    
+    <div id="message"></div>
+    
+    <form id="userForm" class="form-section">
+      <h2>利用者情報</h2>
+      
+      <div class="form-group">
+        <label for="userName" class="required">氏名</label>
+        <input type="text" id="userName" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="userNameKana" class="required">フリガナ</label>
+        <input type="text" id="userNameKana" placeholder="カタカナで入力" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="phone" class="required">電話番号</label>
+        <input type="tel" id="phone" placeholder="090-1234-5678" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="email">メールアドレス</label>
+        <input type="email" id="email" placeholder="example@email.com">
+      </div>
+      
+      <div class="form-group">
+        <label for="address">住所</label>
+        <input type="text" id="address" placeholder="東京都〇〇区〇〇1-2-3">
+      </div>
+      
+      <div class="form-group">
+        <label for="birthDate">生年月日</label>
+        <input type="date" id="birthDate">
+      </div>
+      
+      <div class="button-group">
+        <button type="submit" class="btn btn-primary">登録</button>
+        <button type="button" class="btn btn-secondary" onclick="clearForm()">クリア</button>
+        <button type="button" class="btn btn-secondary" onclick="backToMenu()">戻る</button>
+      </div>
+    </form>
+    
+    <div id="cardInfo" class="card-info">
+      <h3>登録完了</h3>
+      <p>利用者ID: <strong id="newUserId"></strong></p>
+      <p>カード番号: <strong id="newCardNumber"></strong></p>
+      <button class="btn btn-primary" onclick="printCard()">カード印刷</button>
+    </div>
+  </div>
+  
+  <?!= include('common-scripts'); ?>
+  <script>
+    document.getElementById('userForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const userData = {
+        userName: document.getElementById('userName').value,
+        userNameKana: document.getElementById('userNameKana').value,
+        phone: document.getElementById('phone').value,
+        email: document.getElementById('email').value,
+        address: document.getElementById('address').value,
+        birthDate: document.getElementById('birthDate').value
+      };
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showMessage(result.message, 'success');
+            document.getElementById('newUserId').textContent = result.userId;
+            document.getElementById('newCardNumber').textContent = result.cardNumber;
+            document.getElementById('cardInfo').style.display = 'block';
+            clearForm();
+          } else {
+            showMessage(result.message || '登録に失敗しました', 'error');
+          }
+        })
+        .withFailureHandler(handleError)
+        .registerUser(userData);
+    });
+    
+    function clearForm() {
+      document.getElementById('userForm').reset();
+    }
+    
+    function printCard() {
+      window.print();
+    }
+  </script>
+</body>
+</html>

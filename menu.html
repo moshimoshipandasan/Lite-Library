@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>図書館管理システム - メニュー</title>
+  <?!= include('common-styles'); ?>
+  <style>
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .menu-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .menu-section h2 {
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 10px;
+    }
+    
+    .menu-button {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 10px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.3s;
+      text-decoration: none;
+      text-align: center;
+    }
+    
+    .menu-button:hover {
+      background-color: #2980b9;
+    }
+    
+    .menu-button:last-child {
+      margin-bottom: 0;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <h1 style="text-align: center;">図書館管理システム</h1>
+    
+    <div class="menu-grid">
+      <div class="menu-section">
+        <h2>書籍管理</h2>
+        <a href="#" onclick="navigateToPage('bookRegister'); return false;" class="menu-button">書籍登録</a>
+        <a href="#" onclick="navigateToPage('bookSearch'); return false;" class="menu-button">書籍検索・編集</a>
+      </div>
+      
+      <div class="menu-section">
+        <h2>利用者管理</h2>
+        <a href="#" onclick="navigateToPage('userRegister'); return false;" class="menu-button">利用者登録</a>
+        <a href="#" onclick="navigateToPage('userSearch'); return false;" class="menu-button">利用者検索・編集</a>
+      </div>
+      
+      <div class="menu-section">
+        <h2>貸出・返却</h2>
+        <a href="#" onclick="navigateToPage('loan'); return false;" class="menu-button">書籍貸出</a>
+        <a href="#" onclick="navigateToPage('return'); return false;" class="menu-button">書籍返却</a>
+      </div>
+      
+      <div class="menu-section">
+        <h2>レポート・管理</h2>
+        <a href="#" onclick="navigateToPage('reports'); return false;" class="menu-button">レポート・統計</a>
+        <a href="#" onclick="navigateToPage('settings'); return false;" class="menu-button">システム設定</a>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    function navigateToPage(page) {
+      // デプロイされたURLを取得して遷移
+      google.script.run
+        .withSuccessHandler(function(url) {
+          // target="_top"で親フレームに遷移
+          window.top.location.href = url + '?page=' + page;
+        })
+        .withFailureHandler(function(error) {
+          alert('ページ遷移に失敗しました: ' + error);
+        })
+        .getDeployedUrl();
+    }
+  </script>
+</body>
+</html>

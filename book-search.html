@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>書籍検索・編集</title>
+  <?!= include('common-styles'); ?>
+  <style>
+    .search-fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    
+    .search-fields .form-group {
+      margin-bottom: 0;
+    }
+    
+    .btn-edit {
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+    
+    .status-available {
+      color: #27ae60;
+    }
+    
+    .status-loaned {
+      color: #e74c3c;
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+    
+    .modal-content {
+      background: white;
+      width: 90%;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      border-radius: 8px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .close {
+      font-size: 28px;
+      cursor: pointer;
+      color: #999;
+    }
+    
+    .close:hover {
+      color: #333;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <h1>書籍検索・編集</h1>
+    
+    <div class="search-section">
+      <h2>検索条件</h2>
+      <div class="search-fields">
+        <div class="form-group">
+          <label for="searchBookId">書籍ID</label>
+          <input type="text" id="searchBookId" placeholder="B0001">
+        </div>
+        <div class="form-group">
+          <label for="searchISBN">ISBN</label>
+          <input type="text" id="searchISBN" placeholder="978-4-XXXX-XXXX-X">
+        </div>
+        <div class="form-group">
+          <label for="searchTitle">書籍名</label>
+          <input type="text" id="searchTitle" placeholder="部分一致検索">
+        </div>
+        <div class="form-group">
+          <label for="searchTitleKana">書籍名ヨミ</label>
+          <input type="text" id="searchTitleKana" placeholder="ひらがな/カタカナ">
+        </div>
+      </div>
+      <div class="button-group">
+        <button class="btn btn-primary" onclick="searchBooks()">検索</button>
+        <button class="btn btn-secondary" onclick="clearSearch()">クリア</button>
+        <button class="btn btn-secondary" onclick="backToMenu()">戻る</button>
+      </div>
+    </div>
+    
+    <div id="resultsSection" class="results-section" style="display: none;">
+      <h2 id="resultsCount">検索結果</h2>
+      <div style="overflow-x: auto;">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>書籍ID</th>
+              <th>ISBN</th>
+              <th>書籍名</th>
+              <th>著者</th>
+              <th>出版社</th>
+              <th>所在場所</th>
+              <th>状態</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 編集モーダル -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>書籍情報編集</h2>
+        <span class="close" onclick="closeModal()">&times;</span>
+      </div>
+      <form id="editForm">
+        <input type="hidden" id="editBookId">
+        <div class="form-group">
+          <label for="editTitle">書籍名</label>
+          <input type="text" id="editTitle" required>
+        </div>
+        <div class="form-group">
+          <label for="editTitleKana">書籍名ヨミ</label>
+          <input type="text" id="editTitleKana">
+        </div>
+        <div class="form-group">
+          <label for="editAuthor">著者</label>
+          <input type="text" id="editAuthor" required>
+        </div>
+        <div class="form-group">
+          <label for="editAuthorKana">著者ヨミ</label>
+          <input type="text" id="editAuthorKana">
+        </div>
+        <div class="form-group">
+          <label for="editPublisher">出版社</label>
+          <input type="text" id="editPublisher" required>
+        </div>
+        <div class="form-group">
+          <label for="editLocation">所在場所</label>
+          <input type="text" id="editLocation">
+        </div>
+        <div class="form-group">
+          <label for="editStatus">状態</label>
+          <select id="editStatus">
+            <option value="利用可能">利用可能</option>
+            <option value="貸出中">貸出中</option>
+            <option value="修理中">修理中</option>
+            <option value="廃棄">廃棄</option>
+          </select>
+        </div>
+        <div class="button-group">
+          <button type="submit" class="btn btn-primary">更新</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <?!= include('common-scripts'); ?>
+  <script>
+    function searchBooks() {
+      const searchCriteria = {
+        bookId: document.getElementById('searchBookId').value,
+        isbn: document.getElementById('searchISBN').value,
+        title: document.getElementById('searchTitle').value,
+        titleKana: document.getElementById('searchTitleKana').value
+      };
+      
+      google.script.run
+        .withSuccessHandler(displayResults)
+        .withFailureHandler(handleError)
+        .searchBooks(searchCriteria);
+    }
+    
+    function displayResults(results) {
+      const resultsSection = document.getElementById('resultsSection');
+      const resultsBody = document.getElementById('resultsBody');
+      const resultsCount = document.getElementById('resultsCount');
+      
+      resultsSection.style.display = 'block';
+      resultsCount.textContent = `検索結果: ${results.length}件`;
+      
+      resultsBody.innerHTML = '';
+      
+      results.forEach(book => {
+        const row = resultsBody.insertRow();
+        row.innerHTML = `
+          <td>${book.bookId}</td>
+          <td>${book.isbn}</td>
+          <td>${book.title}</td>
+          <td>${book.author}</td>
+          <td>${book.publisher}</td>
+          <td>${book.location || '-'}</td>
+          <td class="status-${book.status === '利用可能' ? 'available' : 'loaned'}">${book.status}</td>
+          <td><button class="btn btn-primary btn-edit" onclick="editBook('${book.bookId}')">編集</button></td>
+        `;
+      });
+      
+      if (results.length === 0) {
+        resultsBody.innerHTML = '<tr><td colspan="8" style="text-align: center;">検索結果がありません</td></tr>';
+      }
+    }
+    
+    function editBook(bookId) {
+      google.script.run
+        .withSuccessHandler(showEditModal)
+        .withFailureHandler(handleError)
+        .getBookDetails(bookId);
+    }
+    
+    function showEditModal(book) {
+      document.getElementById('editBookId').value = book.bookId;
+      document.getElementById('editTitle').value = book.title;
+      document.getElementById('editTitleKana').value = book.titleKana || '';
+      document.getElementById('editAuthor').value = book.author;
+      document.getElementById('editAuthorKana').value = book.authorKana || '';
+      document.getElementById('editPublisher').value = book.publisher;
+      document.getElementById('editLocation').value = book.location || '';
+      document.getElementById('editStatus').value = book.status;
+      
+      document.getElementById('editModal').style.display = 'block';
+    }
+    
+    function closeModal() {
+      document.getElementById('editModal').style.display = 'none';
+    }
+    
+    document.getElementById('editForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const updateData = {
+        bookId: document.getElementById('editBookId').value,
+        title: document.getElementById('editTitle').value,
+        titleKana: document.getElementById('editTitleKana').value,
+        author: document.getElementById('editAuthor').value,
+        authorKana: document.getElementById('editAuthorKana').value,
+        publisher: document.getElementById('editPublisher').value,
+        location: document.getElementById('editLocation').value,
+        status: document.getElementById('editStatus').value
+      };
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showMessage('更新しました', 'success');
+            closeModal();
+            searchBooks();
+          } else {
+            showMessage(result.message || '更新に失敗しました', 'error');
+          }
+        })
+        .withFailureHandler(handleError)
+        .updateBook(updateData);
+    });
+    
+    function clearSearch() {
+      document.getElementById('searchBookId').value = '';
+      document.getElementById('searchISBN').value = '';
+      document.getElementById('searchTitle').value = '';
+      document.getElementById('searchTitleKana').value = '';
+      document.getElementById('resultsSection').style.display = 'none';
+    }
+    
+    window.onclick = function(event) {
+      if (event.target == document.getElementById('editModal')) {
+        closeModal();
+      }
+    }
+  </script>
+</body>
+</html>

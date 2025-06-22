@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>書籍貸出</title>
+  <?!= include('common-styles'); ?>
+  <style>
+    .loan-step {
+      background-color: #f8f9fa;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      border-left: 4px solid #3498db;
+    }
+    
+    .book-list {
+      list-style: none;
+      padding: 0;
+      margin: 10px 0;
+    }
+    
+    .book-item {
+      background-color: white;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .book-info {
+      flex: 1;
+    }
+    
+    .book-info .title {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    
+    .book-info .details {
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .confirmation-section {
+      background-color: #e3f2fd;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <h1>書籍貸出</h1>
+    
+    <div id="message"></div>
+    
+    <!-- Step 1: 利用者選択 -->
+    <div class="form-section">
+      <h2>利用者選択</h2>
+      <div class="loan-step">
+        <div class="form-group">
+          <label for="userId">利用者ID または カード番号</label>
+          <input type="text" id="userId" placeholder="U0001 または LIB..." autofocus>
+          <button class="btn btn-primary" onclick="searchUser()" style="margin-top: 10px;">利用者検索</button>
+        </div>
+        <div id="userInfo" style="display: none; margin-top: 15px;">
+          <strong>利用者:</strong> <span id="userName"></span> (<span id="userIdDisplay"></span>)
+        </div>
+      </div>
+    </div>
+    
+    <!-- Step 2: 書籍選択 -->
+    <div class="form-section" id="bookSection" style="display: none;">
+      <h2>書籍選択</h2>
+      <div class="loan-step">
+        <div class="form-group">
+          <label for="bookId">書籍ID</label>
+          <input type="text" id="bookId" placeholder="B0001">
+          <button class="btn btn-primary" onclick="addBook()" style="margin-top: 10px;">書籍追加</button>
+        </div>
+        <div id="bookListSection" style="margin-top: 20px; display: none;">
+          <h3>貸出書籍リスト</h3>
+          <ul id="bookList" class="book-list"></ul>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Step 3: 確認・実行 -->
+    <div class="confirmation-section" id="confirmSection" style="display: none;">
+      <h2>貸出確認</h2>
+      <p><strong>利用者:</strong> <span id="confirmUserName"></span></p>
+      <p><strong>貸出冊数:</strong> <span id="confirmBookCount"></span>冊</p>
+      <p><strong>返却予定日:</strong> <span id="confirmDueDate"></span></p>
+      <div class="button-group">
+        <button class="btn btn-primary" onclick="executeLoan()">貸出実行</button>
+        <button class="btn btn-secondary" onclick="clearAll()">キャンセル</button>
+      </div>
+    </div>
+    
+    <div class="button-group" style="margin-top: 20px;">
+      <button class="btn btn-secondary" onclick="backToMenu()">メニューに戻る</button>
+    </div>
+  </div>
+  
+  <?!= include('common-scripts'); ?>
+  <script>
+    let currentUser = null;
+    let loanBooks = [];
+    
+    function searchUser() {
+      const userId = document.getElementById('userId').value;
+      if (!userId) {
+        showMessage('利用者IDを入力してください', 'error');
+        return;
+      }
+      
+      google.script.run
+        .withSuccessHandler(function(users) {
+          if (users && users.length > 0) {
+            currentUser = users[0];
+            document.getElementById('userName').textContent = currentUser.userName;
+            document.getElementById('userIdDisplay').textContent = currentUser.userId;
+            document.getElementById('userInfo').style.display = 'block';
+            document.getElementById('bookSection').style.display = 'block';
+            document.getElementById('bookId').focus();
+          } else {
+            showMessage('利用者が見つかりません', 'error');
+            currentUser = null;
+          }
+        })
+        .withFailureHandler(handleError)
+        .searchUsers({ userId: userId });
+    }
+    
+    function addBook() {
+      const bookId = document.getElementById('bookId').value;
+      if (!bookId) {
+        showMessage('書籍IDを入力してください', 'error');
+        return;
+      }
+      
+      // 重複チェック
+      if (loanBooks.some(b => b.bookId === bookId)) {
+        showMessage('この書籍は既に追加されています', 'error');
+        return;
+      }
+      
+      google.script.run
+        .withSuccessHandler(function(book) {
+          if (book) {
+            if (book.status !== '利用可能') {
+              showMessage('この書籍は貸出できません（' + book.status + '）', 'error');
+              return;
+            }
+            
+            loanBooks.push({
+              bookId: book.bookId,
+              title: book.title,
+              author: book.author
+            });
+            
+            updateBookList();
+            document.getElementById('bookId').value = '';
+            document.getElementById('bookId').focus();
+          } else {
+            showMessage('書籍が見つかりません', 'error');
+          }
+        })
+        .withFailureHandler(handleError)
+        .getBookDetails(bookId);
+    }
+    
+    function updateBookList() {
+      const bookList = document.getElementById('bookList');
+      bookList.innerHTML = '';
+      
+      loanBooks.forEach((book, index) => {
+        const li = document.createElement('li');
+        li.className = 'book-item';
+        li.innerHTML = `
+          <div class="book-info">
+            <div class="title">${book.title}</div>
+            <div class="details">${book.bookId} - ${book.author}</div>
+          </div>
+          <button class="btn btn-secondary" onclick="removeBook(${index})">削除</button>
+        `;
+        bookList.appendChild(li);
+      });
+      
+      document.getElementById('bookListSection').style.display = loanBooks.length > 0 ? 'block' : 'none';
+      
+      if (loanBooks.length > 0 && currentUser) {
+        showConfirmation();
+      }
+    }
+    
+    function removeBook(index) {
+      loanBooks.splice(index, 1);
+      updateBookList();
+    }
+    
+    function showConfirmation() {
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 14);
+      
+      document.getElementById('confirmUserName').textContent = currentUser.userName;
+      document.getElementById('confirmBookCount').textContent = loanBooks.length;
+      document.getElementById('confirmDueDate').textContent = dueDate.toLocaleDateString('ja-JP');
+      document.getElementById('confirmSection').style.display = 'block';
+    }
+    
+    function executeLoan() {
+      if (!currentUser || loanBooks.length === 0) return;
+      
+      const loanData = {
+        userId: currentUser.userId,
+        bookIds: loanBooks.map(b => b.bookId)
+      };
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showMessage(result.message, 'success');
+            clearAll();
+          } else {
+            showMessage(result.message || '貸出処理に失敗しました', 'error');
+          }
+        })
+        .withFailureHandler(handleError)
+        .executeLoan(loanData);
+    }
+    
+    function clearAll() {
+      currentUser = null;
+      loanBooks = [];
+      document.getElementById('userId').value = '';
+      document.getElementById('bookId').value = '';
+      document.getElementById('userInfo').style.display = 'none';
+      document.getElementById('bookSection').style.display = 'none';
+      document.getElementById('bookListSection').style.display = 'none';
+      document.getElementById('confirmSection').style.display = 'none';
+      document.getElementById('userId').focus();
+    }
+  </script>
+</body>
+</html>

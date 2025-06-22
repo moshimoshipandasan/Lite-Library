@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>システム設定</title>
+  <?!= include('common-styles'); ?>
+  <style>
+    .settings-section {
+      background-color: #f5f5f5;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .settings-form {
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .settings-group {
+      margin-bottom: 25px;
+      padding-bottom: 25px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .settings-group:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    
+    .settings-group h3 {
+      color: #1976d2;
+      margin-bottom: 15px;
+    }
+    
+    textarea.template {
+      width: 100%;
+      min-height: 150px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    
+    .backup-section {
+      background-color: #e3f2fd;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    
+    .backup-info {
+      margin-top: 15px;
+      padding: 15px;
+      background-color: white;
+      border-radius: 4px;
+    }
+    
+    .backup-history {
+      margin-top: 20px;
+    }
+    
+    .backup-item {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .backup-item:last-child {
+      border-bottom: none;
+    }
+    
+    .help-text {
+      color: #666;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    
+    .btn-small {
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <h1>システム設定</h1>
+    
+    <div id="message"></div>
+    
+    <!-- 基本設定 -->
+    <div class="settings-section">
+      <h2>基本設定</h2>
+      <form id="settingsForm" class="settings-form">
+        <div class="settings-group">
+          <h3>図書館情報</h3>
+          <div class="form-group">
+            <label for="libraryName">図書館名</label>
+            <input type="text" id="libraryName" placeholder="〇〇図書館">
+          </div>
+          <div class="form-group">
+            <label for="libraryAddress">住所</label>
+            <input type="text" id="libraryAddress" placeholder="東京都〇〇区〇〇1-2-3">
+          </div>
+          <div class="form-group">
+            <label for="libraryPhone">電話番号</label>
+            <input type="tel" id="libraryPhone" placeholder="03-1234-5678">
+          </div>
+          <div class="form-group">
+            <label for="libraryEmail">メールアドレス</label>
+            <input type="email" id="libraryEmail" placeholder="library@example.com">
+          </div>
+        </div>
+        
+        <div class="settings-group">
+          <h3>貸出設定</h3>
+          <div class="form-group">
+            <label for="loanPeriod">貸出期間（日）</label>
+            <input type="number" id="loanPeriod" min="1" max="90" value="14">
+            <div class="help-text">デフォルト: 14日</div>
+          </div>
+          <div class="form-group">
+            <label for="maxLoansPerUser">一人あたりの最大貸出数</label>
+            <input type="number" id="maxLoansPerUser" min="1" max="50" value="10">
+            <div class="help-text">デフォルト: 10冊</div>
+          </div>
+        </div>
+        
+        <div class="settings-group">
+          <h3>通知設定</h3>
+          <div class="form-group">
+            <label for="overdueNotificationTemplate">延滞通知メールテンプレート</label>
+            <textarea id="overdueNotificationTemplate" class="template" placeholder="件名: 図書返却のお願い
+
+{userName}様
+
+いつも{libraryName}をご利用いただきありがとうございます。
+
+現在、以下の書籍の返却期限が過ぎております。
+速やかなご返却をお願いいたします。
+
+書籍名: {bookTitle}
+返却予定日: {dueDate}
+延滞日数: {overdueDays}日
+
+ご不明な点がございましたら、下記までお問い合わせください。
+{libraryPhone}
+
+{libraryName}"></textarea>
+            <div class="help-text">利用可能な変数: {userName}, {bookTitle}, {dueDate}, {overdueDays}, {libraryName}, {libraryPhone}</div>
+          </div>
+        </div>
+        
+        <div class="button-group">
+          <button type="submit" class="btn btn-primary">設定を保存</button>
+          <button type="button" class="btn btn-secondary" onclick="loadSettings()">設定を再読み込み</button>
+        </div>
+      </form>
+    </div>
+    
+    <!-- バックアップ管理 -->
+    <div class="settings-section">
+      <h2>バックアップ管理</h2>
+      <div class="backup-section">
+        <div class="button-group">
+          <button class="btn btn-primary" onclick="executeBackup()">手動バックアップを実行</button>
+          <button class="btn btn-secondary" onclick="loadBackupHistory()">バックアップ履歴を表示</button>
+        </div>
+        
+        <div id="backupInfo" class="backup-info" style="display: none;">
+          <h4>最新のバックアップ</h4>
+          <div id="latestBackupDetails"></div>
+        </div>
+        
+        <div id="backupHistory" class="backup-history" style="display: none;">
+          <h4>バックアップ履歴</h4>
+          <div id="backupList"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 30px;">
+      <button class="btn btn-secondary" onclick="backToMenu()">メニューに戻る</button>
+    </div>
+  </div>
+  
+  <?!= include('common-scripts'); ?>
+  <script>
+    // ページ読み込み時に設定を読み込む
+    window.onload = function() {
+      loadSettings();
+    };
+    
+    function loadSettings() {
+      google.script.run
+        .withSuccessHandler(displaySettings)
+        .withFailureHandler(handleError)
+        .getSystemSettings();
+    }
+    
+    function displaySettings(settings) {
+      if (settings) {
+        document.getElementById('libraryName').value = settings.libraryName || '';
+        document.getElementById('libraryAddress').value = settings.libraryAddress || '';
+        document.getElementById('libraryPhone').value = settings.libraryPhone || '';
+        document.getElementById('libraryEmail').value = settings.libraryEmail || '';
+        document.getElementById('loanPeriod').value = settings.loanPeriod || 14;
+        document.getElementById('maxLoansPerUser').value = settings.maxLoansPerUser || 10;
+        document.getElementById('overdueNotificationTemplate').value = settings.overdueNotificationTemplate || '';
+      }
+    }
+    
+    document.getElementById('settingsForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const settings = {
+        libraryName: document.getElementById('libraryName').value,
+        libraryAddress: document.getElementById('libraryAddress').value,
+        libraryPhone: document.getElementById('libraryPhone').value,
+        libraryEmail: document.getElementById('libraryEmail').value,
+        loanPeriod: parseInt(document.getElementById('loanPeriod').value),
+        maxLoansPerUser: parseInt(document.getElementById('maxLoansPerUser').value),
+        overdueNotificationTemplate: document.getElementById('overdueNotificationTemplate').value
+      };
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showMessage('設定を保存しました', 'success');
+          } else {
+            showMessage(result.message || '保存に失敗しました', 'error');
+          }
+        })
+        .withFailureHandler(handleError)
+        .saveSystemSettings(settings);
+    });
+    
+    function executeBackup() {
+      if (!confirm('バックアップを実行しますか？')) return;
+      
+      showMessage('バックアップを実行中...', 'info');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showMessage('バックアップが完了しました', 'success');
+            displayBackupInfo(result.backup);
+          } else {
+            showMessage(result.message || 'バックアップに失敗しました', 'error');
+          }
+        })
+        .withFailureHandler(handleError)
+        .executeBackup();
+    }
+    
+    function displayBackupInfo(backup) {
+      document.getElementById('backupInfo').style.display = 'block';
+      document.getElementById('latestBackupDetails').innerHTML = `
+        <div>バックアップID: ${backup.backupId}</div>
+        <div>実行日時: ${new Date(backup.backupDate).toLocaleString('ja-JP')}</div>
+        <div>URL: <a href="${backup.backupUrl}" target="_blank">スプレッドシートを開く</a></div>
+        <div>種別: ${backup.backupType}</div>
+        <div>実行者: ${backup.executor}</div>
+      `;
+    }
+    
+    function loadBackupHistory() {
+      google.script.run
+        .withSuccessHandler(displayBackupHistory)
+        .withFailureHandler(handleError)
+        .getBackupHistory();
+    }
+    
+    function displayBackupHistory(backups) {
+      document.getElementById('backupHistory').style.display = 'block';
+      const backupList = document.getElementById('backupList');
+      backupList.innerHTML = '';
+      
+      if (backups.length > 0) {
+        backups.forEach(backup => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'backup-item';
+          itemDiv.innerHTML = `
+            <div>
+              <div>${new Date(backup.backupDate).toLocaleString('ja-JP')}</div>
+              <div style="font-size: 14px; color: #666;">${backup.backupType} - ${backup.executor}</div>
+            </div>
+            <a href="${backup.backupUrl}" target="_blank" class="btn btn-secondary btn-small">開く</a>
+          `;
+          backupList.appendChild(itemDiv);
+        });
+      } else {
+        backupList.innerHTML = '<p style="text-align: center; color: #666;">バックアップ履歴がありません</p>';
+      }
+    }
+  </script>
+</body>
+</html>

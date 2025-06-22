@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>図書館管理システム - ログイン</title>
+  <?!= include('common-styles'); ?>
+  <style>
+    .login-container {
+      max-width: 400px;
+      margin: 100px auto;
+      padding: 40px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .login-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .login-message {
+      text-align: center;
+      color: #666;
+      margin-bottom: 20px;
+    }
+    
+    .google-button {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      background-color: #4285f4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+    }
+    
+    .google-button:hover {
+      background-color: #357ae8;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-header">
+      <h1>図書館管理システム</h1>
+    </div>
+    <div class="login-message">
+      <p>このシステムを利用するには、Googleアカウントでのログインが必要です。</p>
+      <p>組織内のGoogleアカウントでログインしてください。</p>
+    </div>
+    <p style="color: #999; text-align: center; margin-top: 20px;">
+      ※ログイン後、再度このURLにアクセスしてください
+    </p>
+  </div>
+</body>
+</html>

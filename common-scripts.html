@@ -1,0 +1,46 @@
+<script>
+  function showMessage(text, type) {
+    const messageDiv = document.getElementById('message');
+    if (messageDiv) {
+      messageDiv.className = 'message message-' + type;
+      messageDiv.textContent = text;
+      setTimeout(() => {
+        messageDiv.textContent = '';
+        messageDiv.className = '';
+      }, 5000);
+    }
+  }
+  
+  function handleError(error) {
+    showMessage('エラーが発生しました: ' + error, 'error');
+  }
+  
+  // ページ遷移用のヘルパー関数
+  function navigateTo(page) {
+    // デプロイされたURLを取得して遷移
+    google.script.run
+      .withSuccessHandler(function(url) {
+        if (page) {
+          window.top.location.href = url + '?page=' + page;
+        } else {
+          // pageが指定されていない場合はトップページ（メニュー）へ
+          window.top.location.href = url;
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.error('ページ遷移に失敗しました:', error);
+        // フォールバック: 相対URLで遷移を試みる
+        if (page) {
+          window.top.location.href = '?page=' + page;
+        } else {
+          window.top.location.href = '/';
+        }
+      })
+      .getDeployedUrl();
+  }
+  
+  // メニューに戻る専用関数
+  function backToMenu() {
+    navigateTo('menu');
+  }
+</script>

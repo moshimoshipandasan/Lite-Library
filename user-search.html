@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>利用者検索・編集</title>
+  <?!= include('common-styles'); ?>
+  <style>
+    .search-fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    
+    .search-fields .form-group {
+      margin-bottom: 0;
+    }
+    
+    .btn-edit {
+      padding: 5px 10px;
+      font-size: 12px;
+      margin-right: 5px;
+    }
+    
+    .status-active {
+      color: #27ae60;
+    }
+    
+    .status-inactive {
+      color: #e74c3c;
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+    
+    .modal-content {
+      background: white;
+      width: 90%;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      border-radius: 8px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    .close {
+      font-size: 28px;
+      cursor: pointer;
+      color: #999;
+    }
+    
+    .close:hover {
+      color: #333;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <h1>利用者検索・編集</h1>
+    
+    <div class="search-section">
+      <h2>検索条件</h2>
+      <div class="search-fields">
+        <div class="form-group">
+          <label for="searchUserId">利用者ID</label>
+          <input type="text" id="searchUserId" placeholder="U0001">
+        </div>
+        <div class="form-group">
+          <label for="searchUserName">氏名</label>
+          <input type="text" id="searchUserName" placeholder="部分一致検索">
+        </div>
+        <div class="form-group">
+          <label for="searchUserNameKana">フリガナ</label>
+          <input type="text" id="searchUserNameKana" placeholder="カタカナ">
+        </div>
+        <div class="form-group">
+          <label for="searchPhone">電話番号</label>
+          <input type="tel" id="searchPhone" placeholder="090-1234-5678">
+        </div>
+      </div>
+      <div class="button-group">
+        <button class="btn btn-primary" onclick="searchUsers()">検索</button>
+        <button class="btn btn-secondary" onclick="clearSearch()">クリア</button>
+        <button class="btn btn-secondary" onclick="backToMenu()">戻る</button>
+      </div>
+    </div>
+    
+    <div id="resultsSection" class="results-section" style="display: none;">
+      <h2 id="resultsCount">検索結果</h2>
+      <div style="overflow-x: auto;">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>利用者ID</th>
+              <th>氏名</th>
+              <th>フリガナ</th>
+              <th>電話番号</th>
+              <th>メールアドレス</th>
+              <th>カード番号</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 編集モーダル -->
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>利用者情報編集</h2>
+        <span class="close" onclick="closeModal()">&times;</span>
+      </div>
+      <form id="editForm">
+        <input type="hidden" id="editUserId">
+        <div class="form-group">
+          <label for="editUserName">氏名</label>
+          <input type="text" id="editUserName" required>
+        </div>
+        <div class="form-group">
+          <label for="editUserNameKana">フリガナ</label>
+          <input type="text" id="editUserNameKana" required>
+        </div>
+        <div class="form-group">
+          <label for="editPhone">電話番号</label>
+          <input type="tel" id="editPhone" required>
+        </div>
+        <div class="form-group">
+          <label for="editEmail">メールアドレス</label>
+          <input type="email" id="editEmail">
+        </div>
+        <div class="form-group">
+          <label for="editAddress">住所</label>
+          <input type="text" id="editAddress">
+        </div>
+        <div class="button-group">
+          <button type="submit" class="btn btn-primary">更新</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <?!= include('common-scripts'); ?>
+  <script>
+    function searchUsers() {
+      const searchCriteria = {
+        userId: document.getElementById('searchUserId').value,
+        userName: document.getElementById('searchUserName').value,
+        userNameKana: document.getElementById('searchUserNameKana').value,
+        phone: document.getElementById('searchPhone').value
+      };
+      
+      google.script.run
+        .withSuccessHandler(displayResults)
+        .withFailureHandler(handleError)
+        .searchUsers(searchCriteria);
+    }
+    
+    function displayResults(results) {
+      const resultsSection = document.getElementById('resultsSection');
+      const resultsBody = document.getElementById('resultsBody');
+      const resultsCount = document.getElementById('resultsCount');
+      
+      resultsSection.style.display = 'block';
+      resultsCount.textContent = `検索結果: ${results.length}件`;
+      
+      resultsBody.innerHTML = '';
+      
+      results.forEach(user => {
+        const row = resultsBody.insertRow();
+        row.innerHTML = `
+          <td>${user.userId}</td>
+          <td>${user.userName}</td>
+          <td>${user.userNameKana}</td>
+          <td>${user.phone}</td>
+          <td>${user.email || '-'}</td>
+          <td>${user.cardNumber}</td>
+          <td>
+            <button class="btn btn-primary btn-edit" onclick="editUser('${user.userId}')">編集</button>
+            <button class="btn btn-secondary btn-edit" onclick="printCard('${user.userId}')">カード印刷</button>
+          </td>
+        `;
+      });
+      
+      if (results.length === 0) {
+        resultsBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">検索結果がありません</td></tr>';
+      }
+    }
+    
+    function editUser(userId) {
+      google.script.run
+        .withSuccessHandler(showEditModal)
+        .withFailureHandler(handleError)
+        .getUserDetails(userId);
+    }
+    
+    function showEditModal(user) {
+      document.getElementById('editUserId').value = user.userId;
+      document.getElementById('editUserName').value = user.userName;
+      document.getElementById('editUserNameKana').value = user.userNameKana;
+      document.getElementById('editPhone').value = user.phone;
+      document.getElementById('editEmail').value = user.email || '';
+      document.getElementById('editAddress').value = user.address || '';
+      
+      document.getElementById('editModal').style.display = 'block';
+    }
+    
+    function closeModal() {
+      document.getElementById('editModal').style.display = 'none';
+    }
+    
+    document.getElementById('editForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const updateData = {
+        userId: document.getElementById('editUserId').value,
+        userName: document.getElementById('editUserName').value,
+        userNameKana: document.getElementById('editUserNameKana').value,
+        phone: document.getElementById('editPhone').value,
+        email: document.getElementById('editEmail').value,
+        address: document.getElementById('editAddress').value
+      };
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showMessage('更新しました', 'success');
+            closeModal();
+            searchUsers();
+          } else {
+            showMessage(result.message || '更新に失敗しました', 'error');
+          }
+        })
+        .withFailureHandler(handleError)
+        .updateUser(updateData);
+    });
+    
+    function printCard(userId) {
+      // カード印刷機能
+      showMessage('カード印刷機能は実装予定です', 'info');
+    }
+    
+    function clearSearch() {
+      document.getElementById('searchUserId').value = '';
+      document.getElementById('searchUserName').value = '';
+      document.getElementById('searchUserNameKana').value = '';
+      document.getElementById('searchPhone').value = '';
+      document.getElementById('resultsSection').style.display = 'none';
+    }
+    
+    window.onclick = function(event) {
+      if (event.target == document.getElementById('editModal')) {
+        closeModal();
+      }
+    }
+  </script>
+</body>
+</html>

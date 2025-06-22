@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>レポート・統計</title>
+  <?!= include('common-styles'); ?>
+  <style>
+    .report-section {
+      background-color: #f5f5f5;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .stat-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .stat-card h3 {
+      margin: 0 0 10px 0;
+      color: #1976d2;
+    }
+    
+    .stat-value {
+      font-size: 28px;
+      font-weight: bold;
+      color: #333;
+      margin: 10px 0;
+    }
+    
+    .overdue-list {
+      background-color: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .overdue-item {
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .overdue-item:last-child {
+      border-bottom: none;
+    }
+    
+    .overdue-days {
+      color: #d32f2f;
+      font-weight: bold;
+    }
+    
+    .book-rank {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .book-rank:last-child {
+      border-bottom: none;
+    }
+    
+    .rank-number {
+      font-size: 20px;
+      font-weight: bold;
+      color: #1976d2;
+      margin-right: 15px;
+      min-width: 30px;
+    }
+    
+    .export-section {
+      text-align: right;
+      margin-top: 20px;
+    }
+    
+    .row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <h1>レポート・統計</h1>
+    
+    <div id="message"></div>
+    
+    <!-- 月次統計 -->
+    <div class="report-section">
+      <h2>月次統計</h2>
+      <div class="button-group">
+        <button class="btn btn-primary" onclick="loadMonthlyStatistics()">統計データを読み込む</button>
+      </div>
+      
+      <div id="monthlyStats" style="display: none;">
+        <div class="row">
+          <div class="col">
+            <div class="stat-card">
+              <h3>今月の貸出数</h3>
+              <div class="stat-value" id="currentMonthLoans">-</div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="stat-card">
+              <h3>今月の返却数</h3>
+              <div class="stat-value" id="currentMonthReturns">-</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="stat-card">
+          <h3>人気書籍トップ10</h3>
+          <div id="popularBooks"></div>
+        </div>
+        
+        <div class="export-section">
+          <button class="btn btn-secondary" onclick="exportStatistics()">CSVエクスポート</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 延滞リスト -->
+    <div class="report-section">
+      <h2>延滞リスト</h2>
+      <div class="button-group">
+        <button class="btn btn-primary" onclick="loadOverdueList()">延滞リストを表示</button>
+        <button class="btn btn-warning" id="sendNotificationBtn" onclick="sendOverdueNotifications()" style="display: none;">延滞通知を送信</button>
+      </div>
+      
+      <div id="overdueList" style="display: none;">
+        <div class="overdue-list" id="overdueContent">
+          <!-- 動的に生成 -->
+        </div>
+      </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 30px;">
+      <button class="btn btn-secondary" onclick="backToMenu()">メニューに戻る</button>
+    </div>
+  </div>
+  
+  <?!= include('common-scripts'); ?>
+  <script>
+    function loadMonthlyStatistics() {
+      google.script.run
+        .withSuccessHandler(displayMonthlyStatistics)
+        .withFailureHandler(handleError)
+        .getMonthlyStatistics();
+    }
+    
+    function displayMonthlyStatistics(stats) {
+      document.getElementById('monthlyStats').style.display = 'block';
+      document.getElementById('currentMonthLoans').textContent = stats.currentMonth.loans;
+      document.getElementById('currentMonthReturns').textContent = stats.currentMonth.returns;
+      
+      const popularBooksDiv = document.getElementById('popularBooks');
+      popularBooksDiv.innerHTML = '';
+      
+      stats.popularBooks.forEach((book, index) => {
+        const rankDiv = document.createElement('div');
+        rankDiv.className = 'book-rank';
+        rankDiv.innerHTML = `
+          <span class="rank-number">${index + 1}</span>
+          <div>
+            <div>${book.title}</div>
+            <div style="color: #666; font-size: 14px;">貸出回数: ${book.loanCount}回</div>
+          </div>
+        `;
+        popularBooksDiv.appendChild(rankDiv);
+      });
+      
+      if (stats.popularBooks.length === 0) {
+        popularBooksDiv.innerHTML = '<p style="text-align: center; color: #666;">データがありません</p>';
+      }
+    }
+    
+    function loadOverdueList() {
+      google.script.run
+        .withSuccessHandler(displayOverdueList)
+        .withFailureHandler(handleError)
+        .getOverdueList();
+    }
+    
+    function displayOverdueList(overdueItems) {
+      document.getElementById('overdueList').style.display = 'block';
+      const overdueContent = document.getElementById('overdueContent');
+      overdueContent.innerHTML = '';
+      
+      if (overdueItems.length > 0) {
+        document.getElementById('sendNotificationBtn').style.display = 'inline-block';
+        
+        overdueItems.forEach(item => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'overdue-item';
+          itemDiv.innerHTML = `
+            <div style="font-weight: bold;">${item.bookTitle} (${item.bookId})</div>
+            <div>利用者: ${item.userName} (${item.userId})</div>
+            <div>返却予定日: ${new Date(item.dueDate).toLocaleDateString('ja-JP')}</div>
+            <div class="overdue-days">延滞日数: ${item.overdueDays}日</div>
+            ${item.email ? '<div style="color: #666; font-size: 14px;">メール: ' + item.email + '</div>' : ''}
+          `;
+          overdueContent.appendChild(itemDiv);
+        });
+      } else {
+        document.getElementById('sendNotificationBtn').style.display = 'none';
+        overdueContent.innerHTML = '<p style="text-align: center; padding: 20px; color: #666;">延滞書籍はありません</p>';
+      }
+    }
+    
+    function sendOverdueNotifications() {
+      if (!confirm('延滞通知メールを送信しますか？')) return;
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showMessage(`延滞通知を送信しました。送信数: ${result.sentCount}件`, 'success');
+          } else {
+            showMessage(result.message || '通知送信に失敗しました', 'error');
+          }
+        })
+        .withFailureHandler(handleError)
+        .sendOverdueNotifications();
+    }
+    
+    function exportStatistics() {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            // CSVダウンロード処理
+            const blob = new Blob([result.csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `図書館統計_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+          } else {
+            showMessage('エクスポートに失敗しました', 'error');
+          }
+        })
+        .withFailureHandler(handleError)
+        .exportMonthlyStatistics();
+    }
+  </script>
+</body>
+</html>

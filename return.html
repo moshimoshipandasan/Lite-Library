@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>書籍返却</title>
+  <?!= include('common-styles'); ?>
+  <style>
+    .tab-container {
+      margin-bottom: 20px;
+    }
+    
+    .tab-buttons {
+      display: flex;
+      border-bottom: 2px solid #ddd;
+      margin-bottom: 20px;
+    }
+    
+    .tab-button {
+      padding: 10px 20px;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.3s;
+    }
+    
+    .tab-button.active {
+      border-bottom-color: #3498db;
+      color: #3498db;
+      font-weight: bold;
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    .return-item {
+      background-color: white;
+      padding: 15px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+    }
+    
+    .return-item .book-info {
+      flex: 1;
+      margin-left: 15px;
+    }
+    
+    .return-item .title {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    
+    .return-item .details {
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .checkbox-wrapper {
+      display: flex;
+      align-items: center;
+    }
+    
+    .overdue {
+      color: #e74c3c;
+      font-weight: bold;
+    }
+    
+    .user-loans-section {
+      background-color: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <h1>書籍返却</h1>
+    
+    <div id="message"></div>
+    
+    <div class="tab-container">
+      <div class="tab-buttons">
+        <button class="tab-button active" onclick="switchTab('book')">書籍IDで返却</button>
+        <button class="tab-button" onclick="switchTab('user')">利用者から返却</button>
+      </div>
+      
+      <!-- 書籍IDで返却 -->
+      <div id="bookTab" class="tab-content active">
+        <div class="form-section">
+          <h2>書籍ID入力</h2>
+          <div class="form-group">
+            <label for="returnBookId">書籍ID</label>
+            <input type="text" id="returnBookId" placeholder="B0001" autofocus>
+            <button class="btn btn-primary" onclick="addReturnBook()" style="margin-top: 10px;">返却リストに追加</button>
+          </div>
+          
+          <div id="returnListSection" style="display: none; margin-top: 20px;">
+            <h3>返却予定リスト</h3>
+            <ul id="returnList" class="book-list" style="list-style: none; padding: 0;"></ul>
+            <div class="button-group">
+              <button class="btn btn-primary" onclick="executeBookReturn()">返却実行</button>
+              <button class="btn btn-secondary" onclick="clearBookReturn()">クリア</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 利用者から返却 -->
+      <div id="userTab" class="tab-content">
+        <div class="form-section">
+          <h2>利用者検索</h2>
+          <div class="form-group">
+            <label for="returnUserId">利用者ID / 氏名 / フリガナ</label>
+            <input type="text" id="returnUserId" placeholder="検索キーワード">
+            <button class="btn btn-primary" onclick="searchUserLoans()" style="margin-top: 10px;">検索</button>
+          </div>
+          
+          <div id="userLoansSection" class="user-loans-section" style="display: none;">
+            <h3 id="userInfo"></h3>
+            <div id="userLoansList"></div>
+            <div class="button-group" style="margin-top: 20px;">
+              <button class="btn btn-primary" onclick="executeUserReturn()">選択した書籍を返却</button>
+              <button class="btn btn-secondary" onclick="clearUserReturn()">クリア</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="button-group" style="margin-top: 20px;">
+      <button class="btn btn-secondary" onclick="backToMenu()">メニューに戻る</button>
+    </div>
+  </div>
+  
+  <?!= include('common-scripts'); ?>
+  <script>
+    let returnBooks = [];
+    let userLoans = [];
+    let currentUserId = null;
+    
+    function switchTab(tab) {
+      // タブボタンの切り替え
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      
+      // タブコンテンツの切り替え
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      document.getElementById(tab + 'Tab').classList.add('active');
+      
+      // フォーカス設定
+      if (tab === 'book') {
+        document.getElementById('returnBookId').focus();
+      } else {
+        document.getElementById('returnUserId').focus();
+      }
+    }
+    
+    // 書籍IDで返却
+    function addReturnBook() {
+      const bookId = document.getElementById('returnBookId').value;
+      if (!bookId) {
+        showMessage('書籍IDを入力してください', 'error');
+        return;
+      }
+      
+      // 重複チェック
+      if (returnBooks.some(b => b.bookId === bookId)) {
+        showMessage('この書籍は既に追加されています', 'error');
+        return;
+      }
+      
+      google.script.run
+        .withSuccessHandler(function(loanInfo) {
+          if (loanInfo) {
+            returnBooks.push({
+              bookId: bookId,
+              title: loanInfo.bookTitle,
+              userName: loanInfo.userName,
+              loanDate: loanInfo.loanDate,
+              dueDate: loanInfo.dueDate,
+              overdueDays: loanInfo.overdueDays
+            });
+            
+            updateReturnList();
+            document.getElementById('returnBookId').value = '';
+            document.getElementById('returnBookId').focus();
+          } else {
+            showMessage('この書籍は貸出されていません', 'error');
+          }
+        })
+        .withFailureHandler(handleError)
+        .getLoanInfoByBookId(bookId);
+    }
+    
+    function updateReturnList() {
+      const list = document.getElementById('returnList');
+      list.innerHTML = '';
+      
+      returnBooks.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.className = 'return-item';
+        
+        const overdueText = item.overdueDays > 0 
+          ? `<span class="overdue">延滞 ${item.overdueDays}日</span>` 
+          : '';
+        
+        li.innerHTML = `
+          <div class="book-info">
+            <div class="title">${item.bookId} - ${item.title}</div>
+            <div class="details">
+              利用者: ${item.userName} | 
+              貸出日: ${new Date(item.loanDate).toLocaleDateString('ja-JP')} | 
+              返却予定: ${new Date(item.dueDate).toLocaleDateString('ja-JP')}
+              ${overdueText}
+            </div>
+          </div>
+          <button class="btn btn-secondary" onclick="removeReturnBook('${item.bookId}')">削除</button>
+        `;
+        list.appendChild(li);
+      });
+      
+      document.getElementById('returnListSection').style.display = returnBooks.length > 0 ? 'block' : 'none';
+    }
+    
+    function removeReturnBook(bookId) {
+      returnBooks = returnBooks.filter(b => b.bookId !== bookId);
+      updateReturnList();
+    }
+    
+    function executeBookReturn() {
+      if (returnBooks.length === 0) return;
+      
+      const returnData = {
+        bookIds: returnBooks.map(b => b.bookId)
+      };
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showMessage(`返却処理が完了しました。返却冊数: ${result.returnedIds.length}冊`, 'success');
+            clearBookReturn();
+          } else {
+            showMessage(result.message || '返却処理に失敗しました', 'error');
+          }
+        })
+        .withFailureHandler(handleError)
+        .executeReturn(returnData);
+    }
+    
+    function clearBookReturn() {
+      document.getElementById('returnBookId').value = '';
+      returnBooks = [];
+      updateReturnList();
+    }
+    
+    // 利用者から返却
+    function searchUserLoans() {
+      const searchText = document.getElementById('returnUserId').value;
+      if (!searchText) return;
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.user && result.loans) {
+            currentUserId = result.user.userId;
+            userLoans = result.loans;
+            displayUserLoans(result.user, result.loans);
+          } else {
+            showMessage('利用者が見つからないか、貸出中の書籍がありません', 'error');
+          }
+        })
+        .withFailureHandler(handleError)
+        .searchUserWithLoans(searchText);
+    }
+    
+    function displayUserLoans(user, loans) {
+      document.getElementById('userInfo').textContent = `利用者: ${user.userName} (${user.userId}) - 貸出中: ${loans.length}冊`;
+      
+      const list = document.getElementById('userLoansList');
+      list.innerHTML = '';
+      
+      loans.forEach(loan => {
+        const div = document.createElement('div');
+        div.className = 'return-item';
+        
+        const overdueText = loan.overdueDays > 0 
+          ? `<span class="overdue">延滞 ${loan.overdueDays}日</span>` 
+          : '';
+        
+        div.innerHTML = `
+          <div class="checkbox-wrapper">
+            <input type="checkbox" id="check_${loan.bookId}" value="${loan.bookId}">
+          </div>
+          <div class="book-info">
+            <div class="title">${loan.bookId} - ${loan.title}</div>
+            <div class="details">
+              貸出日: ${new Date(loan.loanDate).toLocaleDateString('ja-JP')} | 
+              返却予定: ${new Date(loan.dueDate).toLocaleDateString('ja-JP')}
+              ${overdueText}
+            </div>
+          </div>
+        `;
+        list.appendChild(div);
+      });
+      
+      document.getElementById('userLoansSection').style.display = 'block';
+    }
+    
+    function executeUserReturn() {
+      const selectedBooks = [];
+      userLoans.forEach(loan => {
+        const checkbox = document.getElementById(`check_${loan.bookId}`);
+        if (checkbox && checkbox.checked) {
+          selectedBooks.push(loan.bookId);
+        }
+      });
+      
+      if (selectedBooks.length === 0) {
+        showMessage('返却する書籍を選択してください', 'error');
+        return;
+      }
+      
+      const returnData = {
+        bookIds: selectedBooks
+      };
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showMessage(`返却処理が完了しました。返却冊数: ${result.returnedIds.length}冊`, 'success');
+            clearUserReturn();
+          } else {
+            showMessage(result.message || '返却処理に失敗しました', 'error');
+          }
+        })
+        .withFailureHandler(handleError)
+        .executeReturn(returnData);
+    }
+    
+    function clearUserReturn() {
+      document.getElementById('returnUserId').value = '';
+      document.getElementById('userLoansSection').style.display = 'none';
+      userLoans = [];
+      currentUserId = null;
+    }
+  </script>
+</body>
+</html>
