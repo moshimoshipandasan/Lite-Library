@@ -3,7 +3,9 @@
     "allow": [
       "WebFetch(domain:zenn.dev)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)"
     ],
     "deny": []
   }

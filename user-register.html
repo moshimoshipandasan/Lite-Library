@@ -31,8 +31,8 @@
       </div>
       
       <div class="form-group">
-        <label for="userNameKana" class="required">フリガナ</label>
-        <input type="text" id="userNameKana" placeholder="カタカナで入力" required>
+        <label for="userNameKana" class="required">ふりがな</label>
+        <input type="text" id="userNameKana" placeholder="ひらがなで入力" required>
       </div>
       
       <div class="form-group">
@@ -66,12 +66,15 @@
       <h3>登録完了</h3>
       <p>利用者ID: <strong id="newUserId"></strong></p>
       <p>カード番号: <strong id="newCardNumber"></strong></p>
-      <button class="btn btn-primary" onclick="printCard()">カード印刷</button>
+      <button class="btn btn-primary" onclick="printUserCard()">カード印刷</button>
+      <button class="btn btn-secondary" onclick="continueRegistration()">続けて登録</button>
     </div>
   </div>
   
   <?!= include('common-scripts'); ?>
   <script>
+    let lastRegisteredUserId = null;
+    
     document.getElementById('userForm').addEventListener('submit', function(e) {
       e.preventDefault();
       
@@ -88,6 +91,7 @@
         .withSuccessHandler(function(result) {
           if (result.success) {
             showMessage(result.message, 'success');
+            lastRegisteredUserId = result.userId;
             document.getElementById('newUserId').textContent = result.userId;
             document.getElementById('newCardNumber').textContent = result.cardNumber;
             document.getElementById('cardInfo').style.display = 'block';
@@ -104,8 +108,31 @@
       document.getElementById('userForm').reset();
     }
     
-    function printCard() {
-      window.print();
+    function printUserCard() {
+      if (!lastRegisteredUserId) {
+        showMessage('利用者IDが見つかりません', 'error');
+        return;
+      }
+      
+      showMessage('カード印刷ページを開いています...', 'info');
+      
+      google.script.run
+        .withSuccessHandler(function(url) {
+          const printUrl = url + '?page=cardPrint&userId=' + lastRegisteredUserId;
+          window.open(printUrl, 'printCard', 'width=800,height=600');
+          showMessage('カード印刷ページを開きました', 'success');
+        })
+        .withFailureHandler(function(error) {
+          console.error('カード印刷エラー:', error);
+          showMessage('カード印刷ページの表示に失敗しました', 'error');
+        })
+        .getDeployedUrl();
+    }
+    
+    function continueRegistration() {
+      document.getElementById('cardInfo').style.display = 'none';
+      lastRegisteredUserId = null;
+      document.getElementById('userName').focus();
     }
   </script>
 </body>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>図書館利用者カード印刷</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    @page {
+      size: 85.6mm 54mm;
+      margin: 0;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Sans JP', 'メイリオ', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #f0f0f0;
+    }
+    
+    .card {
+      width: 85.6mm;
+      height: 54mm;
+      position: relative;
+      background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+      border: 1px solid #4a90e2;
+      box-sizing: border-box;
+      padding: 4mm;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .header {
+      text-align: center;
+      border-bottom: 1px solid #4a90e2;
+      padding-bottom: 2mm;
+      margin-bottom: 2mm;
+    }
+    
+    .library-name {
+      font-size: 13px;
+      font-weight: bold;
+      color: #2c5aa0;
+      margin: 0;
+    }
+    
+    .card-title {
+      font-size: 9px;
+      color: #666;
+      margin: 0;
+    }
+    
+    .user-info {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 2mm 0;
+    }
+    
+    .info-content {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+    
+    .user-id {
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .user-name {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .barcode-section {
+      text-align: center;
+      padding: 2mm 0 1mm 0;
+      background-color: white;
+      border-radius: 3px;
+      margin: 0 -2mm;
+    }
+    
+    .barcode {
+      width: 100%;
+      max-width: 65mm;
+      height: 12mm;
+    }
+    
+    .card-number {
+      font-size: 8px;
+      color: #333;
+      margin-top: 0.5mm;
+      letter-spacing: 0.5px;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 20px;
+    }
+    
+    .error {
+      text-align: center;
+      padding: 20px;
+      color: #e74c3c;
+    }
+    
+    @media print {
+      body {
+        margin: 0;
+        background-color: white;
+      }
+      .card {
+        page-break-after: always;
+        border: none;
+        box-shadow: none;
+      }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+</head>
+<body>
+  <div id="loading" class="loading">カード情報を読み込み中...</div>
+  <div id="card" class="card" style="display: none;">
+    <div class="header">
+      <h1 class="library-name">図書館管理システム</h1>
+      <p class="card-title">利用者カード</p>
+    </div>
+    
+    <div class="user-info">
+      <div class="info-content">
+        <span class="user-id" id="userId"></span>
+        <span class="user-name" id="userName"></span>
+      </div>
+    </div>
+    
+    <div class="barcode-section">
+      <svg id="barcode" class="barcode"></svg>
+      <div class="card-number" id="cardNumber"></div>
+    </div>
+  </div>
+  
+  <div id="error" class="error" style="display: none;"></div>
+  
+  <script>
+    // URLパラメータからユーザーIDを取得
+    function getUrlParameter(name) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(name);
+    }
+    
+    // ページ読み込み時に実行
+    window.onload = function() {
+      const userId = getUrlParameter('userId');
+      
+      if (!userId) {
+        showError('ユーザーIDが指定されていません');
+        return;
+      }
+      
+      // サーバーからユーザー情報を取得
+      google.script.run
+        .withSuccessHandler(function(user) {
+          if (!user) {
+            showError('ユーザー情報が見つかりません');
+            return;
+          }
+          
+          // カード情報を表示
+          document.getElementById('userId').textContent = user.userId;
+          document.getElementById('userName').textContent = user.userName;
+          document.getElementById('cardNumber').textContent = user.cardNumber;
+          
+          // バーコードを生成
+          JsBarcode("#barcode", user.cardNumber, {
+            format: "CODE128",
+            width: 1.5,
+            height: 35,
+            displayValue: false,
+            margin: 0
+          });
+          
+          // カードを表示
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('card').style.display = 'flex';
+          
+          // 1秒後に印刷ダイアログを表示
+          setTimeout(function() {
+            window.print();
+          }, 1000);
+        })
+        .withFailureHandler(function(error) {
+          console.error('エラー:', error);
+          showError('カード情報の取得に失敗しました');
+        })
+        .getUserDetails(userId);
+    };
+    
+    function showError(message) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').textContent = message;
+    }
+  </script>
+</body>
+</html>

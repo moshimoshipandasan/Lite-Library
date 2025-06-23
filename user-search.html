@@ -88,8 +88,8 @@
           <input type="text" id="searchUserName" placeholder="部分一致検索">
         </div>
         <div class="form-group">
-          <label for="searchUserNameKana">フリガナ</label>
-          <input type="text" id="searchUserNameKana" placeholder="カタカナ">
+          <label for="searchUserNameKana">ふりがな</label>
+          <input type="text" id="searchUserNameKana" placeholder="ひらがな">
         </div>
         <div class="form-group">
           <label for="searchPhone">電話番号</label>
@@ -111,7 +111,7 @@
             <tr>
               <th>利用者ID</th>
               <th>氏名</th>
-              <th>フリガナ</th>
+              <th>ふりがな</th>
               <th>電話番号</th>
               <th>メールアドレス</th>
               <th>カード番号</th>
@@ -139,7 +139,7 @@
           <input type="text" id="editUserName" required>
         </div>
         <div class="form-group">
-          <label for="editUserNameKana">フリガナ</label>
+          <label for="editUserNameKana">ふりがな</label>
           <input type="text" id="editUserNameKana" required>
         </div>
         <div class="form-group">
@@ -258,8 +258,20 @@
     });
     
     function printCard(userId) {
-      // カード印刷機能
-      showMessage('カード印刷機能は実装予定です', 'info');
+      // カード印刷機能 - 新しいページで開く
+      showMessage('カード印刷ページを開いています...', 'info');
+      
+      google.script.run
+        .withSuccessHandler(function(url) {
+          const printUrl = url + '?page=cardPrint&userId=' + userId;
+          window.open(printUrl, 'printCard', 'width=800,height=600');
+          showMessage('カード印刷ページを開きました', 'success');
+        })
+        .withFailureHandler(function(error) {
+          console.error('カード印刷エラー:', error);
+          showMessage('カード印刷ページの表示に失敗しました', 'error');
+        })
+        .getDeployedUrl();
     }
     
     function clearSearch() {

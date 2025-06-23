@@ -83,7 +83,8 @@ function doGet(e) {
     'reports': 'reports',
     'settings': 'settings',
     'barcodeScanner': 'barcode-scanner',
-    'barcodePopup': 'barcode-popup'
+    'barcodePopup': 'barcode-popup',
+    'cardPrint': 'card-print'
   };
   
   const fileName = pageMap[page] || 'menu';
@@ -507,6 +508,197 @@ function updateBook(updateData) {
 // ========================================
 // 利用者管理機能
 // ========================================
+
+// カード印刷用のHTMLを生成
+function generateCardPrintHtml(userId) {
+  try {
+    const db = new SpreadsheetDB();
+    const userData = db.getData(SHEET_NAMES.USERS_MASTER);
+    const userIndex = userData.findIndex(row => row[COLUMN_INDEXES.USERS_MASTER.USER_ID] === userId);
+    
+    if (userIndex === -1) {
+      return { success: false, message: '利用者が見つかりません' };
+    }
+    
+    const user = userData[userIndex];
+    const userName = user[COLUMN_INDEXES.USERS_MASTER.USER_NAME];
+    const cardNumber = user[COLUMN_INDEXES.USERS_MASTER.CARD_NUMBER];
+    
+    // カード印刷用のHTML（定期券サイズ: 85.6mm × 54mm）
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <title>図書館利用者カード</title>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+        <style>
+          @page {
+            size: 85.6mm 54mm;
+            margin: 0;
+          }
+          
+          body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans JP', 'メイリオ', sans-serif;
+          }
+          
+          .card {
+            width: 85.6mm;
+            height: 54mm;
+            position: relative;
+            background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+            border: 1px solid #4a90e2;
+            box-sizing: border-box;
+            padding: 4mm;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+          }
+          
+          .header {
+            text-align: center;
+            border-bottom: 1px solid #4a90e2;
+            padding-bottom: 2mm;
+            margin-bottom: 2mm;
+          }
+          
+          .library-name {
+            font-size: 13px;
+            font-weight: bold;
+            color: #2c5aa0;
+            margin: 0;
+          }
+          
+          .card-title {
+            font-size: 9px;
+            color: #666;
+            margin: 0;
+          }
+          
+          .user-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 2mm 0;
+          }
+          
+          .info-content {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+          }
+          
+          .user-id {
+            font-size: 12px;
+            color: #666;
+          }
+          
+          .user-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+          }
+          
+          .barcode-section {
+            text-align: center;
+            padding: 2mm 0 1mm 0;
+            background-color: white;
+            border-radius: 3px;
+            margin: 0 -2mm;
+          }
+          
+          .barcode {
+            width: 100%;
+            max-width: 65mm;
+            height: 12mm;
+          }
+          
+          .card-number {
+            font-size: 8px;
+            color: #333;
+            margin-top: 0.5mm;
+            letter-spacing: 0.5px;
+          }
+          
+          @media print {
+            body {
+              margin: 0;
+            }
+            .card {
+              page-break-after: always;
+              border: none;
+            }
+          }
+        </style>
+        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+      </head>
+      <body>
+        <div class="card">
+          <div class="header">
+            <h1 class="library-name">図書館管理システム</h1>
+            <p class="card-title">利用者カード</p>
+          </div>
+          
+          <div class="user-info">
+            <div class="info-content">
+              <span class="user-id">${userId}</span>
+              <span class="user-name">${userName}</span>
+            </div>
+          </div>
+          
+          <div class="barcode-section">
+            <svg id="barcode" class="barcode"></svg>
+            <div class="card-number">${cardNumber}</div>
+          </div>
+        </div>
+        
+        <script>
+          // バーコードを生成
+          JsBarcode("#barcode", "${cardNumber}", {
+            format: "CODE128",
+            width: 1.5,
+            height: 35,
+            displayValue: false,
+            margin: 0
+          });
+          
+          // 自動印刷
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 500);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+    
+    return { success: true, html: html };
+    
+  } catch (error) {
+    console.error('カード印刷エラー:', error);
+    return { success: false, message: 'カード印刷の生成に失敗しました' };
+  }
+}
+
+// カード印刷ウィンドウを開く
+function openCardPrintWindow(userId) {
+  const result = generateCardPrintHtml(userId);
+  
+  if (!result.success) {
+    return result;
+  }
+  
+  // HTMLを直接返す（Base64エンコードを使わない）
+  return {
+    success: true,
+    html: result.html
+  };
+}
 function registerUser(userData) {
   try {
     const db = new SpreadsheetDB();

@@ -2,250 +2,1003 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>書籍貸出</title>
-  <?!= include('common-styles'); ?>
+  <?!= include('mobile-common-styles'); ?>
   <style>
-    .loan-step {
-      background-color: #f8f9fa;
-      padding: 15px;
-      margin-bottom: 20px;
-      border-radius: 4px;
-      border-left: 4px solid #3498db;
+    /* モバイル最適化の追加スタイル */
+    .mobile-content {
+      padding-top: 56px;
+      padding-bottom: 180px;
     }
     
-    .book-list {
-      list-style: none;
-      padding: 0;
-      margin: 10px 0;
+    /* ヘッダーのバックボタン修正 */
+    .mobile-header .back-button {
+      position: relative;
+      z-index: 10;
+      background-color: transparent;
+      border: 2px solid #1976d2;
+      color: #1976d2;
+      font-size: 24px;
+      font-weight: bold;
+      min-width: 40px;
+      height: 40px;
     }
     
-    .book-item {
-      background-color: white;
-      padding: 10px;
-      margin-bottom: 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
+    .mobile-header .back-button:hover {
+      background-color: #e3f2fd;
+    }
+    
+    /* ステップインジケーター */
+    .step-indicator {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      padding: 16px;
+      background-color: #f8f9fa;
+      margin-bottom: 16px;
     }
     
-    .book-info {
+    .step {
       flex: 1;
+      text-align: center;
+      position: relative;
     }
     
-    .book-info .title {
-      font-weight: bold;
-      margin-bottom: 5px;
+    .step::after {
+      content: '';
+      position: absolute;
+      top: 20px;
+      right: -50%;
+      width: 100%;
+      height: 2px;
+      background-color: #e0e0e0;
     }
     
-    .book-info .details {
+    .step:last-child::after {
+      display: none;
+    }
+    
+    .step.active::after {
+      background-color: #1976d2;
+    }
+    
+    .step-number {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: #e0e0e0;
+      color: #666;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 8px;
+      font-weight: 600;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .step.active .step-number {
+      background-color: #1976d2;
+      color: white;
+    }
+    
+    .step.completed .step-number {
+      background-color: #4caf50;
+      color: white;
+    }
+    
+    .step-label {
       font-size: 12px;
       color: #666;
     }
     
-    .confirmation-section {
-      background-color: #e3f2fd;
-      padding: 20px;
+    .step.active .step-label {
+      color: #1976d2;
+      font-weight: 600;
+    }
+    
+    /* スキャンセクション */
+    .scan-section {
+      background-color: #ffffff;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+    
+    .scan-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    
+    .scan-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .scan-status {
+      font-size: 14px;
+      padding: 4px 12px;
+      border-radius: 16px;
+      background-color: #e0e0e0;
+      color: #666;
+    }
+    
+    .scan-status.success {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+    }
+    
+    .scan-input-wrapper {
+      position: relative;
+      margin-bottom: 12px;
+    }
+    
+    .scan-button {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background-color: #1976d2;
+      color: white;
+      border: none;
       border-radius: 8px;
-      margin-top: 20px;
+      padding: 8px 16px;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    input.with-scan-button {
+      padding-right: 120px;
+    }
+    
+    /* 確認情報表示 */
+    .info-card {
+      background-color: #f8f9fa;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .info-row:last-child {
+      border-bottom: none;
+    }
+    
+    .info-label {
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .info-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    /* 貸出期限表示 */
+    .due-date-card {
+      background-color: #fff3e0;
+      border: 1px solid #ffb74d;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    
+    .due-date-label {
+      font-size: 14px;
+      color: #e65100;
+      margin-bottom: 4px;
+    }
+    
+    .due-date-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: #e65100;
+    }
+    
+    /* ボタングループ */
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      background-color: #f8f9fa;
+      border-top: 1px solid #e0e0e0;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+    }
+    
+    /* サイドバー（ドロワー）のスタイル - book-register.htmlから流用 */
+    .sidebar-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+      display: none;
+    }
+    
+    .sidebar-container {
+      position: fixed;
+      top: 0;
+      right: -100%;
+      width: 100%;
+      height: 100%;
+      background-color: #ffffff;
+      z-index: 1000;
+      transition: right 0.3s ease;
+      overflow-y: auto;
+    }
+    
+    .sidebar-container.active {
+      right: 0;
+    }
+    
+    .sidebar-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background-color: #ffffff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 16px;
+      z-index: 1001;
+    }
+    
+    .sidebar-content {
+      padding-top: 72px;
+      padding-bottom: 20px;
+    }
+    
+    .scanner-viewport {
+      position: relative;
+      width: 100%;
+      height: 50vh;
+      background-color: #000;
+      overflow: hidden;
+    }
+    
+    .scanner-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80%;
+      height: 40%;
+      border: 3px solid #4caf50;
+      border-radius: 8px;
+      box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+      z-index: 10;
+    }
+    
+    .scanner-instructions {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      background-color: rgba(0, 0, 0, 0.8);
+      padding: 8px 16px;
+      border-radius: 20px;
+      text-align: center;
+      font-size: 14px;
+      z-index: 10;
+    }
+    
+    .manual-input-section {
+      background-color: #f8f9fa;
+      padding: 16px;
+      margin: 16px;
+      border-radius: 12px;
+    }
+    
+    .manual-input-section h4 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    
+    .scanner-controls {
+      display: flex;
+      gap: 12px;
+      padding: 16px;
+    }
+    
+    .scan-result {
+      background-color: #4caf50;
+      color: white;
+      padding: 12px;
+      margin: 16px;
+      border-radius: 8px;
+      text-align: center;
+      display: none;
+    }
+    
+    /* 非表示セクション */
+    .hidden {
+      display: none;
     }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="container">
-    <h1>書籍貸出</h1>
+  <!-- モバイルヘッダー -->
+  <div class="mobile-header" style="display: flex; align-items: center; justify-content: flex-start;">
+    <button class="back-button" onclick="navigateTo('menu')" style="display: block; visibility: visible;">
+      ←
+    </button>
+    <h1 style="flex: 1; text-align: center; margin-right: 48px;">書籍貸出</h1>
+  </div>
+  
+  <div class="mobile-content">
+    <div id="message" class="toast" style="display: none;"></div>
     
-    <div id="message"></div>
+    <!-- ステップインジケーター -->
+    <div class="step-indicator">
+      <div class="step active" id="step1">
+        <div class="step-number">1</div>
+        <div class="step-label">利用者</div>
+      </div>
+      <div class="step" id="step2">
+        <div class="step-number">2</div>
+        <div class="step-label">書籍</div>
+      </div>
+      <div class="step" id="step3">
+        <div class="step-number">3</div>
+        <div class="step-label">確認</div>
+      </div>
+    </div>
     
-    <!-- Step 1: 利用者選択 -->
-    <div class="form-section">
-      <h2>利用者選択</h2>
-      <div class="loan-step">
-        <div class="form-group">
-          <label for="userId">利用者ID または カード番号</label>
-          <input type="text" id="userId" placeholder="U0001 または LIB..." autofocus>
-          <button class="btn btn-primary" onclick="searchUser()" style="margin-top: 10px;">利用者検索</button>
+    <!-- ステップ1: 利用者選択 -->
+    <div id="userSection" class="scan-section">
+      <div class="scan-header">
+        <div class="scan-title">利用者カード</div>
+        <div class="scan-status" id="userStatus">未スキャン</div>
+      </div>
+      <div class="form-group">
+        <label for="userId">利用者ID / カード番号</label>
+        <div class="scan-input-wrapper">
+          <input type="text" id="userId" class="with-scan-button" placeholder="U0001 または カード番号">
+          <button type="button" class="scan-button" onclick="openBarcodeScanner('user')">
+            📷 スキャン
+          </button>
         </div>
-        <div id="userInfo" style="display: none; margin-top: 15px;">
-          <strong>利用者:</strong> <span id="userName"></span> (<span id="userIdDisplay"></span>)
+        <button class="btn btn-primary" onclick="verifyUser()" style="width: 100%;">利用者確認</button>
+      </div>
+      
+      <!-- 利用者情報表示 -->
+      <div id="userInfo" class="info-card hidden">
+        <div class="info-row">
+          <span class="info-label">氏名</span>
+          <span class="info-value" id="userName">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">カード番号</span>
+          <span class="info-value" id="userCardNumber">-</span>
         </div>
       </div>
     </div>
     
-    <!-- Step 2: 書籍選択 -->
-    <div class="form-section" id="bookSection" style="display: none;">
-      <h2>書籍選択</h2>
-      <div class="loan-step">
-        <div class="form-group">
-          <label for="bookId">書籍ID</label>
-          <input type="text" id="bookId" placeholder="B0001">
-          <button class="btn btn-primary" onclick="addBook()" style="margin-top: 10px;">書籍追加</button>
+    <!-- ステップ2: 書籍選択 -->
+    <div id="bookSection" class="scan-section hidden">
+      <div class="scan-header">
+        <div class="scan-title">書籍バーコード</div>
+        <div class="scan-status" id="bookStatus">未スキャン</div>
+      </div>
+      <div class="form-group">
+        <label for="bookId">書籍ID / ISBN</label>
+        <div class="scan-input-wrapper">
+          <input type="text" id="bookId" class="with-scan-button" placeholder="B0001 または ISBN">
+          <button type="button" class="scan-button" onclick="openBarcodeScanner('book')">
+            📷 スキャン
+          </button>
         </div>
-        <div id="bookListSection" style="margin-top: 20px; display: none;">
-          <h3>貸出書籍リスト</h3>
-          <ul id="bookList" class="book-list"></ul>
+        <button class="btn btn-primary" onclick="verifyBook()" style="width: 100%;">書籍確認</button>
+      </div>
+      
+      <!-- 書籍情報表示 -->
+      <div id="bookInfo" class="info-card hidden">
+        <div class="info-row">
+          <span class="info-label">書籍名</span>
+          <span class="info-value" id="bookTitle">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">著者</span>
+          <span class="info-value" id="bookAuthor">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">状態</span>
+          <span class="info-value" id="bookStatusValue">-</span>
+        </div>
+      </div>
+      
+      <button class="btn btn-success" onclick="addMoreBooks()" style="width: 100%; margin-top: 12px;">
+        + 別の書籍を追加
+      </button>
+    </div>
+    
+    <!-- ステップ3: 確認画面 -->
+    <div id="confirmSection" class="hidden">
+      <div class="card">
+        <h3 style="margin-bottom: 16px;">貸出内容の確認</h3>
+        
+        <!-- 利用者情報 -->
+        <div class="info-card">
+          <h4 style="font-size: 14px; color: #666; margin-bottom: 12px;">利用者情報</h4>
+          <div class="info-row">
+            <span class="info-label">氏名</span>
+            <span class="info-value" id="confirmUserName">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">利用者ID</span>
+            <span class="info-value" id="confirmUserId">-</span>
+          </div>
+        </div>
+        
+        <!-- 貸出書籍リスト -->
+        <div class="info-card">
+          <h4 style="font-size: 14px; color: #666; margin-bottom: 12px;">貸出書籍</h4>
+          <div id="confirmBookList"></div>
+        </div>
+        
+        <!-- 返却期限 -->
+        <div class="due-date-card">
+          <div class="due-date-label">返却期限</div>
+          <div class="due-date-value" id="dueDate">-</div>
         </div>
       </div>
     </div>
     
-    <!-- Step 3: 確認・実行 -->
-    <div class="confirmation-section" id="confirmSection" style="display: none;">
-      <h2>貸出確認</h2>
-      <p><strong>利用者:</strong> <span id="confirmUserName"></span></p>
-      <p><strong>貸出冊数:</strong> <span id="confirmBookCount"></span>冊</p>
-      <p><strong>返却予定日:</strong> <span id="confirmDueDate"></span></p>
-      <div class="button-group">
-        <button class="btn btn-primary" onclick="executeLoan()">貸出実行</button>
-        <button class="btn btn-secondary" onclick="clearAll()">キャンセル</button>
-      </div>
+    <!-- 固定ボタングループ -->
+    <div class="button-group">
+      <button id="nextButton" class="btn btn-primary" onclick="nextStep()" style="display: none;">
+        次へ進む
+      </button>
+      <button id="loanButton" class="btn btn-success" onclick="executeLoan()" style="display: none;">
+        貸出を実行する
+      </button>
+      <button class="btn btn-secondary" onclick="cancelLoan()">キャンセル</button>
+      <button class="btn btn-secondary" onclick="navigateTo('menu')">トップへ戻る</button>
     </div>
-    
-    <div class="button-group" style="margin-top: 20px;">
-      <button class="btn btn-secondary" onclick="backToMenu()">メニューに戻る</button>
+  </div>
+  
+  <!-- サイドバー（ドロワー） -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="sidebar-container" id="sidebarContainer">
+    <div class="sidebar-header">
+      <h3 id="sidebarTitle">バーコードスキャン</h3>
+      <button class="back-button" onclick="closeSidebar()">×</button>
+    </div>
+    <div class="sidebar-content">
+      <div class="scanner-viewport" id="interactive">
+        <div class="scanner-overlay"></div>
+        <div class="scanner-instructions" id="scannerInstructions">
+          バーコードを緑の枠内に収めてください
+        </div>
+      </div>
+      
+      <div id="sidebar-message" class="toast" style="display: none;"></div>
+      
+      <div id="scan-result" class="scan-result"></div>
+      
+      <div class="scanner-controls">
+        <button class="btn btn-primary" id="scanButton" onclick="toggleScanner()" style="flex: 1;">カメラを開始</button>
+      </div>
+      
+      <div class="manual-input-section">
+        <h4 id="manualInputTitle">番号を手動入力</h4>
+        <input type="text" id="manual-code-sidebar" placeholder="">
+        <button class="btn btn-success" onclick="submitManualInput()" style="width: 100%; margin-top: 12px;">確定</button>
+      </div>
     </div>
   </div>
   
   <?!= include('common-scripts'); ?>
+  <!-- ZXing ライブラリ（バーコードスキャン用） -->
+  <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
   <script>
-    let currentUser = null;
-    let loanBooks = [];
+    // グローバル変数
+    let codeReader = null;
+    let isShowingCamera = false;
+    let currentScanType = '';
+    let currentStep = 1;
+    let loanData = {
+      userId: '',
+      userName: '',
+      userCardNumber: '',
+      books: []
+    };
     
-    function searchUser() {
-      const userId = document.getElementById('userId').value;
-      if (!userId) {
-        showMessage('利用者IDを入力してください', 'error');
+    // ステップ制御
+    function updateStepIndicator(step) {
+      // すべてのステップをリセット
+      document.querySelectorAll('.step').forEach(s => {
+        s.classList.remove('active', 'completed');
+      });
+      
+      // 現在のステップまでを更新
+      for (let i = 1; i <= step; i++) {
+        const stepEl = document.getElementById('step' + i);
+        if (i < step) {
+          stepEl.classList.add('completed');
+        } else if (i === step) {
+          stepEl.classList.add('active');
+        }
+      }
+    }
+    
+    // 次のステップへ
+    function nextStep() {
+      if (currentStep === 1 && loanData.userId) {
+        currentStep = 2;
+        updateStepIndicator(2);
+        document.getElementById('userSection').classList.add('hidden');
+        document.getElementById('bookSection').classList.remove('hidden');
+        document.getElementById('nextButton').style.display = 'none';
+      } else if (currentStep === 2 && loanData.books.length > 0) {
+        showConfirmation();
+      }
+    }
+    
+    // 利用者確認
+    function verifyUser() {
+      const userIdInput = document.getElementById('userId').value;
+      if (!userIdInput) {
+        showMessage('利用者IDまたはカード番号を入力してください', 'error');
         return;
       }
+      
+      showMessage('利用者情報を確認中...', 'info');
       
       google.script.run
         .withSuccessHandler(function(users) {
           if (users && users.length > 0) {
-            currentUser = users[0];
-            document.getElementById('userName').textContent = currentUser.userName;
-            document.getElementById('userIdDisplay').textContent = currentUser.userId;
-            document.getElementById('userInfo').style.display = 'block';
-            document.getElementById('bookSection').style.display = 'block';
-            document.getElementById('bookId').focus();
+            const user = users[0];
+            loanData.userId = user.userId;
+            loanData.userName = user.userName;
+            loanData.userCardNumber = user.cardNumber;
+            
+            // 利用者情報を表示
+            document.getElementById('userName').textContent = user.userName;
+            document.getElementById('userCardNumber').textContent = user.cardNumber;
+            document.getElementById('userInfo').classList.remove('hidden');
+            
+            // ステータス更新
+            const userStatus = document.getElementById('userStatus');
+            userStatus.textContent = '確認済み';
+            userStatus.classList.add('success');
+            
+            // 次へボタンを表示
+            document.getElementById('nextButton').style.display = 'block';
+            
+            showMessage('利用者を確認しました', 'success');
           } else {
             showMessage('利用者が見つかりません', 'error');
-            currentUser = null;
           }
         })
-        .withFailureHandler(handleError)
-        .searchUsers({ userId: userId });
+        .withFailureHandler(function(error) {
+          console.error('利用者確認エラー:', error);
+          showMessage('利用者の確認に失敗しました', 'error');
+        })
+        .searchUsers({ userId: userIdInput });
     }
     
-    function addBook() {
-      const bookId = document.getElementById('bookId').value;
-      if (!bookId) {
-        showMessage('書籍IDを入力してください', 'error');
+    // 書籍確認
+    function verifyBook() {
+      const bookIdInput = document.getElementById('bookId').value;
+      if (!bookIdInput) {
+        showMessage('書籍IDまたはISBNを入力してください', 'error');
         return;
       }
       
-      // 重複チェック
-      if (loanBooks.some(b => b.bookId === bookId)) {
-        showMessage('この書籍は既に追加されています', 'error');
-        return;
-      }
+      showMessage('書籍情報を確認中...', 'info');
       
       google.script.run
         .withSuccessHandler(function(book) {
           if (book) {
+            // 貸出可能かチェック
             if (book.status !== '利用可能') {
-              showMessage('この書籍は貸出できません（' + book.status + '）', 'error');
+              showMessage('この書籍は現在貸出できません（' + book.status + '）', 'error');
               return;
             }
             
-            loanBooks.push({
+            // 重複チェック
+            if (loanData.books.some(b => b.bookId === book.bookId)) {
+              showMessage('この書籍は既に追加されています', 'warning');
+              return;
+            }
+            
+            // 書籍情報を追加
+            loanData.books.push({
               bookId: book.bookId,
               title: book.title,
               author: book.author
             });
             
-            updateBookList();
+            // 書籍情報を表示
+            document.getElementById('bookTitle').textContent = book.title;
+            document.getElementById('bookAuthor').textContent = book.author;
+            document.getElementById('bookStatusValue').textContent = book.status;
+            document.getElementById('bookInfo').classList.remove('hidden');
+            
+            // ステータス更新
+            const bookStatus = document.getElementById('bookStatus');
+            bookStatus.textContent = '確認済み';
+            bookStatus.classList.add('success');
+            
+            // 貸出ボタンを表示
+            if (loanData.books.length > 0) {
+              document.getElementById('nextButton').style.display = 'block';
+              document.getElementById('nextButton').textContent = '確認画面へ';
+            }
+            
+            showMessage('書籍を追加しました', 'success');
+            
+            // 入力欄をクリア
             document.getElementById('bookId').value = '';
-            document.getElementById('bookId').focus();
           } else {
             showMessage('書籍が見つかりません', 'error');
           }
         })
-        .withFailureHandler(handleError)
-        .getBookDetails(bookId);
+        .withFailureHandler(function(error) {
+          console.error('書籍確認エラー:', error);
+          showMessage('書籍の確認に失敗しました', 'error');
+        })
+        .getBookDetails(bookIdInput);
     }
     
-    function updateBookList() {
-      const bookList = document.getElementById('bookList');
-      bookList.innerHTML = '';
+    // 別の書籍を追加
+    function addMoreBooks() {
+      // 書籍情報表示をリセット
+      document.getElementById('bookInfo').classList.add('hidden');
+      document.getElementById('bookId').value = '';
+      document.getElementById('bookId').focus();
       
-      loanBooks.forEach((book, index) => {
-        const li = document.createElement('li');
-        li.className = 'book-item';
-        li.innerHTML = `
-          <div class="book-info">
-            <div class="title">${book.title}</div>
-            <div class="details">${book.bookId} - ${book.author}</div>
-          </div>
-          <button class="btn btn-secondary" onclick="removeBook(${index})">削除</button>
+      // ステータスをリセット
+      const bookStatus = document.getElementById('bookStatus');
+      bookStatus.textContent = '未スキャン';
+      bookStatus.classList.remove('success');
+    }
+    
+    // 確認画面表示
+    function showConfirmation() {
+      currentStep = 3;
+      updateStepIndicator(3);
+      
+      // セクション切り替え
+      document.getElementById('bookSection').classList.add('hidden');
+      document.getElementById('confirmSection').classList.remove('hidden');
+      
+      // 利用者情報設定
+      document.getElementById('confirmUserName').textContent = loanData.userName;
+      document.getElementById('confirmUserId').textContent = loanData.userId;
+      
+      // 書籍リスト表示
+      const bookList = document.getElementById('confirmBookList');
+      bookList.innerHTML = '';
+      loanData.books.forEach((book, index) => {
+        const bookRow = document.createElement('div');
+        bookRow.className = 'info-row';
+        bookRow.innerHTML = `
+          <span class="info-label">${index + 1}. ${book.title}</span>
+          <span class="info-value">${book.bookId}</span>
         `;
-        bookList.appendChild(li);
+        bookList.appendChild(bookRow);
       });
       
-      document.getElementById('bookListSection').style.display = loanBooks.length > 0 ? 'block' : 'none';
-      
-      if (loanBooks.length > 0 && currentUser) {
-        showConfirmation();
-      }
-    }
-    
-    function removeBook(index) {
-      loanBooks.splice(index, 1);
-      updateBookList();
-    }
-    
-    function showConfirmation() {
+      // 返却期限計算（14日後）
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 14);
+      const dueDateStr = dueDate.toLocaleDateString('ja-JP', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      document.getElementById('dueDate').textContent = dueDateStr;
       
-      document.getElementById('confirmUserName').textContent = currentUser.userName;
-      document.getElementById('confirmBookCount').textContent = loanBooks.length;
-      document.getElementById('confirmDueDate').textContent = dueDate.toLocaleDateString('ja-JP');
-      document.getElementById('confirmSection').style.display = 'block';
+      // ボタン切り替え
+      document.getElementById('nextButton').style.display = 'none';
+      document.getElementById('loanButton').style.display = 'block';
     }
     
+    // 貸出実行
     function executeLoan() {
-      if (!currentUser || loanBooks.length === 0) return;
+      if (!loanData.userId || loanData.books.length === 0) {
+        showMessage('貸出情報が不完全です', 'error');
+        return;
+      }
       
-      const loanData = {
-        userId: currentUser.userId,
-        bookIds: loanBooks.map(b => b.bookId)
+      showMessage('貸出処理を実行中...', 'info');
+      document.getElementById('loanButton').disabled = true;
+      
+      const loanRequestData = {
+        userId: loanData.userId,
+        bookIds: loanData.books.map(b => b.bookId)
       };
       
       google.script.run
         .withSuccessHandler(function(result) {
           if (result.success) {
-            showMessage(result.message, 'success');
-            clearAll();
+            showMessage('貸出処理が完了しました', 'success');
+            
+            // 3秒後にトップページへ
+            setTimeout(() => {
+              navigateTo('menu');
+            }, 3000);
           } else {
+            document.getElementById('loanButton').disabled = false;
             showMessage(result.message || '貸出処理に失敗しました', 'error');
           }
         })
-        .withFailureHandler(handleError)
-        .executeLoan(loanData);
+        .withFailureHandler(function(error) {
+          document.getElementById('loanButton').disabled = false;
+          console.error('貸出実行エラー:', error);
+          showMessage('貸出処理に失敗しました', 'error');
+        })
+        .executeLoan(loanRequestData);
     }
     
-    function clearAll() {
-      currentUser = null;
-      loanBooks = [];
-      document.getElementById('userId').value = '';
-      document.getElementById('bookId').value = '';
-      document.getElementById('userInfo').style.display = 'none';
-      document.getElementById('bookSection').style.display = 'none';
-      document.getElementById('bookListSection').style.display = 'none';
-      document.getElementById('confirmSection').style.display = 'none';
-      document.getElementById('userId').focus();
+    // キャンセル
+    function cancelLoan() {
+      if (confirm('貸出処理をキャンセルしますか？')) {
+        navigateTo('menu');
+      }
+    }
+    
+    // バーコードスキャナーを開く
+    function openBarcodeScanner(type) {
+      currentScanType = type;
+      
+      // タイトルとプレースホルダーを設定
+      if (type === 'user') {
+        document.getElementById('sidebarTitle').textContent = '利用者カードスキャン';
+        document.getElementById('scannerInstructions').textContent = '利用者カードのバーコードを読み取ってください';
+        document.getElementById('manualInputTitle').textContent = 'カード番号を手動入力';
+        document.getElementById('manual-code-sidebar').placeholder = '例: U0001';
+      } else {
+        document.getElementById('sidebarTitle').textContent = '書籍バーコードスキャン';
+        document.getElementById('scannerInstructions').textContent = '書籍のバーコードを読み取ってください';
+        document.getElementById('manualInputTitle').textContent = 'ISBN/書籍IDを手動入力';
+        document.getElementById('manual-code-sidebar').placeholder = '例: 9784123456789';
+      }
+      
+      document.getElementById('sidebarOverlay').style.display = 'block';
+      document.getElementById('sidebarContainer').classList.add('active');
+      
+      // 少し遅延してからカメラを起動
+      setTimeout(() => {
+        startCameraPreview();
+      }, 300);
+    }
+    
+    // サイドバーを閉じる
+    function closeSidebar() {
+      document.getElementById('sidebarOverlay').style.display = 'none';
+      document.getElementById('sidebarContainer').classList.remove('active');
+      
+      // カメラを停止
+      stopCameraPreview();
+    }
+    
+    // サイドバー内のメッセージ表示
+    function setSidebarMessage(text, type = 'info') {
+      const messageEl = document.getElementById('sidebar-message');
+      messageEl.textContent = text;
+      messageEl.className = 'toast ' + type;
+      messageEl.style.display = 'block';
+      messageEl.style.position = 'fixed';
+      messageEl.style.bottom = '80px';
+      messageEl.style.left = '50%';
+      messageEl.style.transform = 'translateX(-50%)';
+      messageEl.style.zIndex = '200';
+      
+      setTimeout(() => {
+        messageEl.style.display = 'none';
+      }, 3000);
+    }
+    
+    // カメラプレビューの開始/停止切り替え
+    function toggleScanner() {
+      if (isShowingCamera) {
+        stopCameraPreview();
+      } else {
+        startCameraPreview();
+      }
+    }
+    
+    // カメラプレビューを開始
+    async function startCameraPreview() {
+      try {
+        // ビデオ要素を作成
+        let videoElement = document.querySelector('#interactive video');
+        if (!videoElement) {
+          videoElement = document.createElement('video');
+          videoElement.id = 'barcode-video';
+          videoElement.style.width = '100%';
+          videoElement.style.height = '100%';
+          videoElement.style.objectFit = 'cover';
+          document.getElementById('interactive').appendChild(videoElement);
+        }
+        
+        // ZXingライブラリを初期化
+        const { BrowserMultiFormatReader } = window.ZXing;
+        codeReader = new BrowserMultiFormatReader();
+        
+        // 利用可能なカメラデバイスを取得
+        const videoInputDevices = await codeReader.listVideoInputDevices();
+        
+        // 背面カメラを優先
+        const selectedDeviceId = videoInputDevices.find(device => 
+          device.label.toLowerCase().includes('back') || 
+          device.label.toLowerCase().includes('rear')
+        )?.deviceId || videoInputDevices[0]?.deviceId;
+        
+        if (!selectedDeviceId) {
+          throw new Error('カメラが見つかりません');
+        }
+        
+        // 継続的スキャンを開始
+        await codeReader.decodeFromVideoDevice(selectedDeviceId, videoElement, (result, err) => {
+          if (result) {
+            // バーコード検出成功
+            handleBarcodeDetected(result.text);
+          }
+          if (err && !(err.name === 'NotFoundException')) {
+            console.error('スキャンエラー:', err);
+          }
+        });
+        
+        isShowingCamera = true;
+        
+        // ボタンを更新
+        const scanButton = document.getElementById('scanButton');
+        scanButton.textContent = 'スキャンを停止';
+        scanButton.classList.remove('btn-primary');
+        scanButton.classList.add('btn-warning');
+        
+        setSidebarMessage('バーコードを枠内に合わせてください', 'info');
+        
+      } catch (err) {
+        console.error('カメラエラー:', err);
+        setSidebarMessage('カメラへのアクセスが拒否されました', 'error');
+      }
+    }
+    
+    // カメラプレビューを停止
+    function stopCameraPreview() {
+      if (codeReader) {
+        codeReader.reset();
+        codeReader = null;
+      }
+      
+      const videoElement = document.querySelector('#interactive video');
+      if (videoElement) {
+        videoElement.remove();
+      }
+      
+      isShowingCamera = false;
+      
+      // ボタンを元に戻す
+      const scanButton = document.getElementById('scanButton');
+      scanButton.textContent = 'カメラを開始';
+      scanButton.classList.remove('btn-warning');
+      scanButton.classList.add('btn-primary');
+      
+      // スキャン結果をクリア
+      const scanResult = document.getElementById('scan-result');
+      scanResult.style.display = 'none';
+      scanResult.textContent = '';
+    }
+    
+    // バーコード検出時の処理
+    function handleBarcodeDetected(code) {
+      // ビープ音を再生
+      playBeepSound();
+      
+      // スキャン結果を表示
+      const scanResult = document.getElementById('scan-result');
+      scanResult.textContent = '✓ バーコードを検出: ' + code;
+      scanResult.style.display = 'block';
+      
+      // 対応する入力欄に値を設定
+      if (currentScanType === 'user') {
+        document.getElementById('userId').value = code;
+      } else {
+        document.getElementById('bookId').value = code;
+      }
+      
+      // 1秒後にサイドバーを閉じる
+      setTimeout(() => {
+        closeSidebar();
+        showMessage('バーコードを読み取りました', 'success');
+      }, 1000);
+    }
+    
+    // ビープ音再生
+    function playBeepSound() {
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 1000;
+        gainNode.gain.value = 0.3;
+        
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.1);
+      } catch (e) {
+        console.error("ビープ音の再生に失敗:", e);
+      }
+    }
+    
+    // 手動入力の確定
+    function submitManualInput() {
+      const code = document.getElementById('manual-code-sidebar').value;
+      if (!code) {
+        setSidebarMessage('コードを入力してください', 'error');
+        return;
+      }
+      
+      // 対応する入力欄に値を設定
+      if (currentScanType === 'user') {
+        document.getElementById('userId').value = code;
+      } else {
+        document.getElementById('bookId').value = code;
+      }
+      
+      // サイドバーを閉じる
+      closeSidebar();
+      
+      // メッセージ表示
+      showMessage('コードを設定しました', 'success');
+    }
+    
+    // Enterキーで手動入力を確定
+    document.addEventListener('DOMContentLoaded', function() {
+      const manualInput = document.getElementById('manual-code-sidebar');
+      if (manualInput) {
+        manualInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            submitManualInput();
+          }
+        });
+      }
+    });
+    
+    // navigateTo関数
+    function navigateTo(page) {
+      google.script.run
+        .withSuccessHandler(function(url) {
+          window.top.location.href = url + '?page=' + page;
+        })
+        .getDeployedUrl();
     }
   </script>
 </body>
